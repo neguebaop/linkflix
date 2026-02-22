@@ -1,5 +1,4 @@
-from app import app, db
+from app import app
 
-# cria tabelas no primeiro start (não quebra se já existir)
-with app.app_context():
-    db.create_all()
+# entrypoint para gunicorn
+application = app

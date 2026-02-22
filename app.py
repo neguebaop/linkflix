@@ -64,6 +64,29 @@ login_manager.login_view = "login"
 
 
 # =========================================================
+# ✅✅✅ CRIA TABELAS NO PRIMEIRO REQUEST (SEGURO NO RENDER)
+# =========================================================
+# Isso evita travar o boot do Gunicorn/Render.
+# Ele tenta criar as tabelas só quando o app já está de pé.
+_db_ready = False
+
+@app.before_request
+def _create_tables_once_safe():
+    global _db_ready
+    if _db_ready:
+        return
+    try:
+        db.create_all()
+        _db_ready = True
+    except Exception:
+        # se der erro de conexão temporário, não derruba o site
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
+# =========================================================
 # =================== MISTIC PAY CONFIG ====================
 # =========================================================
 
@@ -346,7 +369,7 @@ def register():
     error = None
     if request.method == "POST":
         email = (request.form.get("email") or "").strip().lower()
-        password = request.form.get("password") or ""
+        password = (request.form.get("password") or "")
 
         if User.query.filter_by(username=email).first():
             error = "Este email já está cadastrado"
@@ -517,6 +540,74 @@ def progress_update(content_id):
     db.session.commit()
 
     return jsonify({"ok": True})
+
+
+# ✅✅✅ COMPATIBILIDADE COM SEU watch.html (rotas /api/progress/*)
+@app.route("/api/progress/update", methods=["POST"])
+@login_required
+@require_active_profile
+def api_progress_update():
+    """
+    Espera JSON:
+      { content_id: X, progress_percent: 0-100 }
+    Converte % em position_seconds usando duration_seconds do conteúdo.
+    """
+    profile_id = session["active_profile"]
+    data = request.get_json(silent=True) or {}
+
+    content_id = int(data.get("content_id") or 0)
+    pct = data.get("progress_percent", 0)
+
+    try:
+        pct = int(float(pct or 0))
+    except Exception:
+        pct = 0
+
+    pct = max(0, min(100, pct))
+    content = Content.query.get_or_404(content_id)
+
+    dur = int(content.duration_seconds or 0)
+    if dur <= 0:
+        # fallback: 1h se não tiver duração configurada
+        dur = 3600
+
+    pos = int(dur * (pct / 100.0))
+    pos = max(0, min(dur, pos))
+
+    wp = WatchProgress.query.filter_by(profile_id=profile_id, content_id=content_id).first()
+    if not wp:
+        wp = WatchProgress(profile_id=profile_id, content_id=content_id)
+
+    wp.position_seconds = pos
+    wp.duration_seconds = dur
+
+    db.session.add(wp)
+    db.session.commit()
+
+    return jsonify({"ok": True, "content_id": content_id, "progress_percent": pct})
+
+
+@app.route("/api/progress/get/<int:content_id>", methods=["GET"])
+@login_required
+@require_active_profile
+def api_progress_get(content_id):
+    profile_id = session["active_profile"]
+    content = Content.query.get_or_404(content_id)
+
+    wp = WatchProgress.query.filter_by(profile_id=profile_id, content_id=content_id).first()
+
+    dur = int((wp.duration_seconds if (wp and wp.duration_seconds) else (content.duration_seconds or 0)) or 0)
+    pos = int((wp.position_seconds if wp else 0) or 0)
+
+    if dur <= 0:
+        dur = 3600
+
+    pct = 0
+    if dur > 0 and pos > 0:
+        pct = int((pos / dur) * 100)
+        pct = max(0, min(100, pct))
+
+    return jsonify({"content_id": content_id, "progress_percent": pct})
 
 
 # =========================================================
