@@ -1052,3 +1052,98 @@ a:hover{ color: #fff; }
   .navbar.search-open .search-form{ display: flex !important; }
   .navbar.search-open .search-close{ display: inline-flex !important; }
 }
+
+/* =========================
+   GENRES DROPDOWN - FIX MOBILE (igual Netflix)
+   Ajuste os seletores se o seu HTML usar outros nomes.
+   ========================= */
+
+/* painel geral do menu de gêneros */
+.genres-menu,
+.genre-menu,
+.browse-genres-menu,
+.dropdown-genres{
+  position: absolute;
+  left: 0;
+  top: calc(100% + 10px);
+  width: min(820px, 92vw);
+  max-width: 92vw;
+  background: rgba(0,0,0,0.88);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.55);
+  z-index: 5000;
+}
+
+/* grid/lista interna (colunas) */
+.genres-grid,
+.genre-grid,
+.browse-genres-grid{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 22px;
+}
+
+/* links dentro */
+.genres-menu a,
+.genre-menu a,
+.browse-genres-menu a,
+.dropdown-genres a{
+  display: block;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: rgba(255,255,255,0.92);
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.genres-menu a:hover,
+.genre-menu a:hover,
+.browse-genres-menu a:hover,
+.dropdown-genres a:hover{
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+/* ===== MOBILE: não cortar, permitir rolar, reduzir colunas ===== */
+@media (max-width: 600px){
+
+  .genres-menu,
+  .genre-menu,
+  .browse-genres-menu,
+  .dropdown-genres{
+    width: 94vw;
+    max-width: 94vw;
+
+    /* aqui é o segredo: o menu fica “alto” e com scroll */
+    max-height: 62vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .genres-grid,
+  .genre-grid,
+  .browse-genres-grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* 2 colunas no mobile */
+    gap: 10px 14px;
+  }
+
+  /* telas bem pequenas: 1 coluna */
+  @media (max-width: 380px){
+    .genres-grid,
+    .genre-grid,
+    .browse-genres-grid{
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* evita “sumir” texto por quebra estranha */
+  .genres-menu a,
+  .genre-menu a,
+  .browse-genres-menu a,
+  .dropdown-genres a{
+    white-space: normal; /* deixa quebrar linha se precisar */
+  }
+}
