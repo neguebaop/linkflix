@@ -66,8 +66,6 @@ login_manager.login_view = "login"
 # =========================================================
 # ✅✅✅ CRIA TABELAS NO PRIMEIRO REQUEST (SEGURO NO RENDER)
 # =========================================================
-# Isso evita travar o boot do Gunicorn/Render.
-# Ele tenta criar as tabelas só quando o app já está de pé.
 _db_ready = False
 
 @app.before_request
@@ -79,7 +77,6 @@ def _create_tables_once_safe():
         db.create_all()
         _db_ready = True
     except Exception:
-        # se der erro de conexão temporário, não derruba o site
         try:
             db.session.rollback()
         except Exception:
@@ -134,7 +131,6 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not (session.get("is_admin") or getattr(current_user, "is_admin", False)):
-            # ✅ não força /home (que exige perfil ativo)
             return redirect(url_for("index"))
         return f(*args, **kwargs)
     return decorated_function
@@ -542,7 +538,6 @@ def progress_update(content_id):
     return jsonify({"ok": True})
 
 
-# ✅✅✅ COMPATIBILIDADE COM SEU watch.html (rotas /api/progress/*)
 @app.route("/api/progress/update", methods=["POST"])
 @login_required
 @require_active_profile
@@ -568,7 +563,6 @@ def api_progress_update():
 
     dur = int(content.duration_seconds or 0)
     if dur <= 0:
-        # fallback: 1h se não tiver duração configurada
         dur = 3600
 
     pos = int(dur * (pct / 100.0))
@@ -691,6 +685,181 @@ def home():
         anime=anime,
         series=series,
         filmes=filmes,
+        favorite_ids=favorite_ids,
+        progress_map=progress_map
+    )
+
+
+# =========================================================
+# =================== BROWSE: FILMES/SÉRIES =================
+# =========================================================
+
+def get_all_genres_for_type(content_type: str):
+    """
+    Lista gêneros possíveis para o dropdown, usando:
+    - Content.category (string)
+    - Content.extra_categories (N:N)
+    Filtra por tipo (Filme/Serie/Em Breve)
+    """
+    genres = set()
+
+    # Categoria principal (string)
+    rows = (
+        Content.query
+        .filter(Content.content_type == content_type)
+        .with_entities(Content.category)
+        .all()
+    )
+    for (cat,) in rows:
+        if cat:
+            c = cat.strip()
+            if c:
+                genres.add(c)
+
+    # Categorias extras (N:N)
+    rows2 = (
+        Content.query
+        .filter(Content.content_type == content_type)
+        .options(db.joinedload(Content.extra_categories))
+        .all()
+    )
+    for c in rows2:
+        for ec in (c.extra_categories or []):
+            if ec and ec.name:
+                genres.add(ec.name.strip())
+
+    genres = [g for g in genres if g]
+    genres.sort(key=lambda x: x.lower())
+    return genres
+
+
+def apply_common_filters(query, content_type: str):
+    """
+    Aplica filtros padrão:
+    - content_type fixo
+    - search (?search=)
+    - genre (?genre=) -> bate em category OU extra_categories
+    """
+    search = (request.args.get("search") or "").strip()
+    genre = (request.args.get("genre") or "").strip()
+
+    query = query.filter(Content.content_type == content_type)
+
+    if search:
+        st = f"%{search}%"
+        query = query.filter(
+            (Content.title.ilike(st)) |
+            (Content.category.ilike(st))
+        )
+
+    if genre:
+        query = query.filter(
+            (Content.category.ilike(f"%{genre}%")) |
+            (Content.extra_categories.any(Category.name.ilike(f"%{genre}%")))
+        )
+
+    return query, search, genre
+
+
+def build_favorites_and_progress(profile_id: int):
+    # favoritos
+    favs = Favorite.query.filter_by(profile_id=profile_id).all() if profile_id else []
+    favorite_ids = {f.content_id for f in favs}
+
+    # progresso (pra barra)
+    progress_map = {}
+    progress_rows = (
+        WatchProgress.query
+        .filter_by(profile_id=profile_id)
+        .order_by(WatchProgress.updated_at.desc())
+        .limit(60)
+        .all()
+    )
+
+    for p in progress_rows:
+        if not p.duration_seconds or not p.position_seconds:
+            continue
+
+        if p.position_seconds >= max(p.duration_seconds - 60, 1):
+            continue
+
+        pct = int((p.position_seconds / p.duration_seconds) * 100)
+        pct = max(1, min(95, pct))
+        progress_map[p.content_id] = pct
+
+    return favorite_ids, progress_map
+
+
+@app.route("/filmes")
+@login_required
+@require_active_profile
+def filmes_page():
+    q, search, genre = apply_common_filters(Content.query, "Filme")
+    items = q.order_by(Content.id.desc()).all()
+
+    genres = get_all_genres_for_type("Filme")
+
+    profile_id = session.get("active_profile")
+    favorite_ids, progress_map = build_favorites_and_progress(profile_id)
+
+    return render_template(
+        "browse.html",
+        page_title="Filmes",
+        content_type="Filme",
+        items=items,
+        genres=genres,
+        selected_genre=genre,
+        search=search,
+        favorite_ids=favorite_ids,
+        progress_map=progress_map
+    )
+
+
+@app.route("/series")
+@login_required
+@require_active_profile
+def series_page():
+    q, search, genre = apply_common_filters(Content.query, "Serie")
+    items = q.order_by(Content.id.desc()).all()
+
+    genres = get_all_genres_for_type("Serie")
+
+    profile_id = session.get("active_profile")
+    favorite_ids, progress_map = build_favorites_and_progress(profile_id)
+
+    return render_template(
+        "browse.html",
+        page_title="Séries",
+        content_type="Serie",
+        items=items,
+        genres=genres,
+        selected_genre=genre,
+        search=search,
+        favorite_ids=favorite_ids,
+        progress_map=progress_map
+    )
+
+
+@app.route("/em-breve")
+@login_required
+@require_active_profile
+def embreve_page():
+    q, search, genre = apply_common_filters(Content.query, "Em Breve")
+    items = q.order_by(Content.id.desc()).all()
+
+    genres = get_all_genres_for_type("Em Breve")
+
+    profile_id = session.get("active_profile")
+    favorite_ids, progress_map = build_favorites_and_progress(profile_id)
+
+    return render_template(
+        "browse.html",
+        page_title="Em Breve",
+        content_type="Em Breve",
+        items=items,
+        genres=genres,
+        selected_genre=genre,
+        search=search,
         favorite_ids=favorite_ids,
         progress_map=progress_map
     )
