@@ -747,3 +747,70 @@ a:hover{ color: #fff; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
 }
+
+/* ===== FIX DEFINITIVO: navbar igual Netflix (cola no FINAL do style.css) ===== */
+.navbar{
+  display: grid !important;
+  grid-template-columns: auto 1fr; /* esquerda (logo+menu) | direita (search+icons) */
+  align-items: center !important;
+  height: 68px !important;
+  padding: 0 48px !important;
+  background: rgba(0,0,0,.88) !important;
+  backdrop-filter: blur(6px);
+}
+
+.nav-left{
+  display: flex !important;
+  align-items: center !important;
+  gap: 26px !important;            /* logo colado no menu */
+  min-width: 0 !important;
+}
+
+.logo{
+  display: inline-flex !important;
+  align-items: center !important;
+  color:#e50914 !important;
+  font-size: 26px !important;
+  font-weight: 900 !important;
+  letter-spacing: .6px !important;
+  text-decoration:none !important;
+  line-height: 1 !important;
+}
+
+.nav-links{
+  display: flex !important;
+  align-items: center !important;
+  gap: 18px !important;
+  white-space: nowrap !important;
+}
+
+.nav-links a{
+  color: rgba(255,255,255,.85) !important;
+  font-size: 14px !important;
+  text-decoration:none !important;
+}
+.nav-links a:hover{ color:#fff !important; }
+
+.nav-right{
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;  /* joga tudo pro canto direito */
+  gap: 14px !important;
+}
+
+.search-form{
+  margin-left: 0 !important;
+  width: auto !important;
+}
+
+.search-form input{
+  width: 220px !important;
+  max-width: 28vw !important;
+}
+
+/* Responsivo igual Netflix */
+@media (max-width: 820px){
+  .navbar{ padding: 0 18px !important; }
+  .search-form{ display:none !important; }
+  .nav-links{ gap: 12px !important; }
+}
