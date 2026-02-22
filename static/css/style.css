@@ -908,3 +908,99 @@ a:hover{ color: #fff; }
   .browse-title{ font-size: 28px; }
   .browse-top{ flex-direction: column; align-items:flex-start; gap: 12px; }
 }
+/* =========================
+   SEARCH (Netflix mobile)
+   ========================= */
+
+.search-wrap{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  position: relative;
+}
+
+/* botão lupa (mobile) */
+.search-toggle{
+  display:none; /* só no mobile */
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.35);
+  color:#fff;
+  cursor:pointer;
+  align-items:center;
+  justify-content:center;
+}
+.search-toggle i{ font-size: 16px; }
+
+/* botão fechar dentro do input (mobile) */
+.search-close{
+  display:none; /* só quando abrir no mobile */
+  border:none;
+  background:transparent;
+  color:#fff;
+  cursor:pointer;
+  opacity:.85;
+}
+
+/* no desktop continua do seu jeito */
+@media (min-width: 601px){
+  .navbar .search-form{
+    display:flex; /* garante */
+  }
+}
+
+/* MOBILE */
+@media (max-width: 600px){
+
+  /* mostra a lupa */
+  .search-toggle{
+    display:inline-flex;
+  }
+
+  /* o form fica escondido até abrir */
+  .navbar .search-form{
+    display:none;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: min(78vw, 360px);
+    max-width: 78vw;
+    height: 38px;
+    padding: 0 10px;
+    border-radius: 999px;
+    z-index: 2000;
+  }
+
+  /* quando abre */
+  .navbar.search-open .search-form{
+    display:flex;
+  }
+
+  .navbar.search-open .search-close{
+    display:inline-flex;
+  }
+
+  /* quando a busca está aberta, some com links pra dar espaço (Netflix faz isso) */
+  .navbar.search-open .nav-links{
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    overflow: hidden;
+  }
+
+  /* e também some com o sino e perfil (opcional, Netflix costuma manter ícones mas aqui evita quebrar) */
+  .navbar.search-open .nav-icon,
+  .navbar.search-open .profile-dropdown{
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* IMPORTANTÍSSIMO: NÃO esconder a busca mais */
+  /* Remove/neutraliza seu hide antigo */
+  .nav-search, .search-container, .navbar-search{
+    display: initial;
+  }
+}

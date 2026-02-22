@@ -33,15 +33,12 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "linkflixsecret")
 
 # ✅ Segurança básica em produção (Render)
-# Render expõe variável de ambiente RENDER="true" nos serviços
 if os.getenv("RENDER"):
     app.config["SESSION_COOKIE_SECURE"] = True
     app.config["REMEMBER_COOKIE_SECURE"] = True
 
 # ✅ DATABASE (SQLite local / Postgres no Render)
 db_url = os.getenv("DATABASE_URL", "sqlite:///linkflix.db")
-
-# Render às vezes fornece postgres://, SQLAlchemy prefere postgresql://
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
@@ -53,7 +50,6 @@ app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads", "
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5MB
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
-# ✅ Garante que pasta de upload existe (evita erro em produção)
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
 db = SQLAlchemy(app)
@@ -91,7 +87,6 @@ MISTICPAY_BASE_URL = os.getenv("MISTICPAY_BASE_URL", "https://api.misticpay.com"
 MISTICPAY_CI = os.getenv("MISTICPAY_CI", "")
 MISTICPAY_CS = os.getenv("MISTICPAY_CS", "")
 
-# ✅ planos
 PLAN_FREE = "Free"
 PLAN_PREMIUM = "Premium"   # 30 dias
 PLAN_GOLD = "Gold"         # permanente
@@ -105,10 +100,6 @@ GOLD_PRICE = 25.00
 # =========================================================
 
 def get_active_profile():
-    """
-    Retorna Profile válido do usuário logado baseado em session["active_profile"].
-    Se estiver inválido, limpa da sessão e retorna None.
-    """
     if not current_user.is_authenticated:
         return None
 
@@ -137,7 +128,6 @@ def admin_required(f):
 
 
 def require_active_profile(f):
-    """✅ PERFIL ATIVO obrigatório (pra não quebrar continuar assistindo por perfil)"""
     @wraps(f)
     def decorated(*args, **kwargs):
         if not current_user.is_authenticated:
@@ -159,13 +149,12 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True)  # email
     password = db.Column(db.String(200))
-    plan = db.Column(db.String(20), default=PLAN_FREE)  # Free / Premium / Gold
-    plan_expires_at = db.Column(db.DateTime, nullable=True)  # Premium expira, Gold = None
+    plan = db.Column(db.String(20), default=PLAN_FREE)
+    plan_expires_at = db.Column(db.DateTime, nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
     profiles = db.relationship("Profile", backref="user", lazy=True)
 
     def has_access_to_premium(self) -> bool:
-        """✅ Premium acessível se: Gold OU Premium dentro da validade"""
         if self.plan == PLAN_GOLD:
             return True
         if self.plan == PLAN_PREMIUM:
@@ -175,7 +164,6 @@ class User(UserMixin, db.Model):
         return False
 
 
-# ✅ N:N categorias extras (um conteúdo pode ter várias categorias)
 content_categories = db.Table(
     "content_categories",
     db.Column("content_id", db.Integer, db.ForeignKey("content.id"), primary_key=True),
@@ -191,17 +179,14 @@ class Category(db.Model):
 class Content(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200))
-    category = db.Column(db.String(100))  # categoria principal (mantém compatível)
+    category = db.Column(db.String(100))
     description = db.Column(db.String(500))
     image = db.Column(db.String(300))
     tmdb_id = db.Column(db.String(50))
     content_type = db.Column(db.String(50), default="Filme")  # Filme / Serie / Em Breve
     is_premium = db.Column(db.Boolean, default=False)
-
-    # ✅ duração pra calcular barrinha (%)
     duration_seconds = db.Column(db.Integer, default=0)
 
-    # ✅ categorias extras
     extra_categories = db.relationship("Category", secondary=content_categories, lazy="joined")
 
 
@@ -220,7 +205,6 @@ class Favorite(db.Model):
 
 
 class WatchProgress(db.Model):
-    """✅ progresso por perfil / conteúdo"""
     id = db.Column(db.Integer, primary_key=True)
     profile_id = db.Column(db.Integer, db.ForeignKey("profile.id"), nullable=False, index=True)
     content_id = db.Column(db.Integer, db.ForeignKey("content.id"), nullable=False, index=True)
@@ -233,17 +217,16 @@ class WatchProgress(db.Model):
 
 
 class PlanPurchase(db.Model):
-    """✅ guarda compra/assinatura criada pelo MisticPay"""
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
 
-    plan = db.Column(db.String(20), nullable=False)  # Premium / Gold
+    plan = db.Column(db.String(20), nullable=False)
     amount = db.Column(db.Float, nullable=False)
 
     external_transaction_id = db.Column(db.String(100), unique=True, nullable=False)
     misticpay_transaction_id = db.Column(db.String(100), nullable=True)
 
-    status = db.Column(db.String(20), default="PENDENTE")  # PENDENTE/COMPLETO/FALHA
+    status = db.Column(db.String(20), default="PENDENTE")
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -299,7 +282,6 @@ def save_avatar_file(file_storage):
     return f"/static/uploads/avatars/{filename}"
 
 
-# ✅ injeta active_profile em TODOS templates
 @app.context_processor
 def inject_active_profile():
     return dict(active_profile=get_active_profile())
@@ -311,9 +293,6 @@ def inject_active_profile():
 
 @app.before_request
 def normalize_plan_before_request():
-    """
-    ✅ Garante que Premium expirado vira Free automaticamente.
-    """
     try:
         if current_user.is_authenticated and current_user.plan == PLAN_PREMIUM and current_user.plan_expires_at:
             if datetime.utcnow() >= current_user.plan_expires_at:
@@ -499,112 +478,6 @@ def delete_profile(profile_id):
 
 
 # =========================================================
-# ============== CONTINUAR ASSISTINDO (API) =================
-# =========================================================
-
-@app.route("/progress/update/<int:content_id>", methods=["POST"])
-@login_required
-@require_active_profile
-def progress_update(content_id):
-    profile_id = session["active_profile"]
-    Content.query.get_or_404(content_id)
-
-    data = request.get_json(silent=True) or {}
-    pos = int(float(data.get("position", 0) or 0))
-    dur = int(float(data.get("duration", 0) or 0))
-
-    if pos < 0:
-        pos = 0
-    if dur < 0:
-        dur = 0
-
-    if dur == 0:
-        c = Content.query.get(content_id)
-        dur = int(c.duration_seconds or 0)
-
-    if dur > 0 and pos > dur:
-        pos = dur
-
-    wp = WatchProgress.query.filter_by(profile_id=profile_id, content_id=content_id).first()
-    if not wp:
-        wp = WatchProgress(profile_id=profile_id, content_id=content_id)
-
-    wp.position_seconds = pos
-    wp.duration_seconds = dur
-
-    db.session.add(wp)
-    db.session.commit()
-
-    return jsonify({"ok": True})
-
-
-@app.route("/api/progress/update", methods=["POST"])
-@login_required
-@require_active_profile
-def api_progress_update():
-    """
-    Espera JSON:
-      { content_id: X, progress_percent: 0-100 }
-    Converte % em position_seconds usando duration_seconds do conteúdo.
-    """
-    profile_id = session["active_profile"]
-    data = request.get_json(silent=True) or {}
-
-    content_id = int(data.get("content_id") or 0)
-    pct = data.get("progress_percent", 0)
-
-    try:
-        pct = int(float(pct or 0))
-    except Exception:
-        pct = 0
-
-    pct = max(0, min(100, pct))
-    content = Content.query.get_or_404(content_id)
-
-    dur = int(content.duration_seconds or 0)
-    if dur <= 0:
-        dur = 3600
-
-    pos = int(dur * (pct / 100.0))
-    pos = max(0, min(dur, pos))
-
-    wp = WatchProgress.query.filter_by(profile_id=profile_id, content_id=content_id).first()
-    if not wp:
-        wp = WatchProgress(profile_id=profile_id, content_id=content_id)
-
-    wp.position_seconds = pos
-    wp.duration_seconds = dur
-
-    db.session.add(wp)
-    db.session.commit()
-
-    return jsonify({"ok": True, "content_id": content_id, "progress_percent": pct})
-
-
-@app.route("/api/progress/get/<int:content_id>", methods=["GET"])
-@login_required
-@require_active_profile
-def api_progress_get(content_id):
-    profile_id = session["active_profile"]
-    content = Content.query.get_or_404(content_id)
-
-    wp = WatchProgress.query.filter_by(profile_id=profile_id, content_id=content_id).first()
-
-    dur = int((wp.duration_seconds if (wp and wp.duration_seconds) else (content.duration_seconds or 0)) or 0)
-    pos = int((wp.position_seconds if wp else 0) or 0)
-
-    if dur <= 0:
-        dur = 3600
-
-    pct = 0
-    if dur > 0 and pos > 0:
-        pct = int((pos / dur) * 100)
-        pct = max(0, min(100, pct))
-
-    return jsonify({"content_id": content_id, "progress_percent": pct})
-
-
-# =========================================================
 # ============================ HOME =========================
 # =========================================================
 
@@ -634,18 +507,15 @@ def home():
     contents = query.all()
     featured_content = choice(contents) if contents else None
 
-    # fileiras antigas (mantém)
     acao = Content.query.filter(Content.category.ilike("%ação%")).all()
     anime = Content.query.filter(Content.category.ilike("%anime%")).all()
     filmes = Content.query.filter(Content.content_type.ilike("%film%")).all()
     series = Content.query.filter(Content.content_type.ilike("%ser%")).all()
 
-    # favoritos
     profile_id = session.get("active_profile")
     favs = Favorite.query.filter_by(profile_id=profile_id).all() if profile_id else []
     favorite_ids = {f.content_id for f in favs}
 
-    # ✅ CONTINUAR ASSISTINDO REAL
     progress_map = {}
     continuar_real = []
 
@@ -694,14 +564,44 @@ def home():
 # =================== BROWSE: FILMES/SÉRIES =================
 # =========================================================
 
+# ✅ GÊNEROS FIXOS IGUAL A NETFLIX (os que você mostrou)
+DEFAULT_GENRES = [
+    "Ação",
+    "Anime",
+    "Brasileiros",
+    "Clássicos",
+    "Comédia stand-up",
+    "Comédias",
+    "Como me sinto hoje?",
+    "Curtas",
+    "Documentários",
+    "Drama",
+    "Esportes",
+    "Estrangeiros",
+    "Fantasia",
+    "Fé e espiritualidade",
+    "Ficção científica",
+    "Hollywood",
+    "Independentes",
+    "LGBTQIA+",
+    "Música e musicais",
+    "Netflix no Oscar® 2026",
+    "Para toda a família",
+    "Policial",
+    "Premiados",
+    "Romance",
+    "Sua playlist do zodíaco",
+    "Suspense",
+    "Terror",
+]
+
 def get_all_genres_for_type(content_type: str):
     """
-    Lista gêneros possíveis para o dropdown, usando:
-    - Content.category (string)
-    - Content.extra_categories (N:N)
-    Filtra por tipo (Filme/Serie/Em Breve)
+    Dropdown igual Netflix:
+    - sempre mostra DEFAULT_GENRES
+    - e também adiciona tudo que existir no banco (category + extra_categories)
     """
-    genres = set()
+    genres = set(DEFAULT_GENRES)
 
     # Categoria principal (string)
     rows = (
@@ -734,12 +634,6 @@ def get_all_genres_for_type(content_type: str):
 
 
 def apply_common_filters(query, content_type: str):
-    """
-    Aplica filtros padrão:
-    - content_type fixo
-    - search (?search=)
-    - genre (?genre=) -> bate em category OU extra_categories
-    """
     search = (request.args.get("search") or "").strip()
     genre = (request.args.get("genre") or "").strip()
 
@@ -762,11 +656,9 @@ def apply_common_filters(query, content_type: str):
 
 
 def build_favorites_and_progress(profile_id: int):
-    # favoritos
     favs = Favorite.query.filter_by(profile_id=profile_id).all() if profile_id else []
     favorite_ids = {f.content_id for f in favs}
 
-    # progresso (pra barra)
     progress_map = {}
     progress_rows = (
         WatchProgress.query
@@ -779,7 +671,6 @@ def build_favorites_and_progress(profile_id: int):
     for p in progress_rows:
         if not p.duration_seconds or not p.position_seconds:
             continue
-
         if p.position_seconds >= max(p.duration_seconds - 60, 1):
             continue
 
@@ -875,7 +766,6 @@ def embreve_page():
 def watch(id):
     content = Content.query.get_or_404(id)
 
-    # ✅ bloqueio premium
     if content.is_premium and not current_user.has_access_to_premium():
         flash("Conteúdo Premium. Faça upgrade do plano.")
         return redirect(url_for("plans"))
@@ -1079,7 +969,6 @@ def admin():
     allowed = main_account or session.get("is_admin") or session.get("admin_liberado")
 
     if request.method == "POST":
-        # adicionar conteúdo
         if request.form.get("title"):
             if not allowed:
                 return redirect(url_for("admin"))
@@ -1124,7 +1013,6 @@ def admin():
             flash("Conteúdo adicionado com sucesso!")
             return redirect(url_for("admin"))
 
-        # chave admin
         chave_digitada = request.form.get("admin_key")
         if chave_digitada in ("22", "LINKVIP2026"):
             session["is_admin"] = True
