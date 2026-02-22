@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="container-nx">
+  <div class="nx-title">Planos</div>
+  <div class="nx-subtitle">Escolha o plano ideal para liberar conteúdos Premium.</div>
+
+  <div class="nx-plans">
+
+    <!-- FREE -->
+    <div class="nx-plan {% if current_user.plan == 'Free' %}current{% endif %}">
+      <div class="name">Free</div>
+      <div class="price">R$ 0,00</div>
+
+      <ul>
+        <li><span class="ok">✓</span> Acesso aos conteúdos não Premium</li>
+        <li><span class="ok">✓</span> Perfis e favoritos</li>
+        <li><span class="no">✕</span> Conteúdos Premium bloqueados</li>
+      </ul>
+
+      {% if current_user.plan == 'Free' %}
+        <span class="nx-pill ok">Plano atual</span>
+      {% else %}
+        <span class="nx-pill">Disponível</span>
+      {% endif %}
+    </div>
+
+    <!-- PREMIUM -->
+    <div class="nx-plan premium {% if current_user.plan == 'Premium' %}current{% endif %}">
+      <div class="name">Premium <span style="color:var(--muted); font-weight:700;">(30 dias)</span></div>
+      <div class="price">R$ {{ "%.2f"|format(premium_price) }}</div>
+
+      <ul>
+        <li><span class="ok">✓</span> Libera conteúdos Premium</li>
+        <li><span class="ok">✓</span> Válido por 30 dias</li>
+        <li><span class="ok">✓</span> Continua assistindo com barrinha</li>
+      </ul>
+
+      {% if current_user.plan == 'Premium' %}
+        <span class="nx-pill brand">Ativo</span>
+      {% else %}
+        <a class="nx-btn nx-btn-primary" href="{{ url_for('pay', plan='premium') }}">Assinar Premium</a>
+      {% endif %}
+    </div>
+
+    <!-- GOLD -->
+    <div class="nx-plan gold {% if current_user.plan == 'Gold' %}current{% endif %}">
+      <div class="name">Gold <span style="color:var(--muted); font-weight:700;">(vitalício)</span></div>
+      <div class="price">R$ {{ "%.2f"|format(gold_price) }}</div>
+
+      <ul>
+        <li><span class="ok">✓</span> Libera tudo do Premium</li>
+        <li><span class="ok">✓</span> Sem expiração</li>
+        <li><span class="ok">✓</span> Acesso total permanente</li>
+      </ul>
+
+      {% if current_user.plan == 'Gold' %}
+        <span class="nx-pill warn">Ativo</span>
+      {% else %}
+        <a class="nx-btn nx-btn-primary" href="{{ url_for('pay', plan='gold') }}">Comprar Gold</a>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <div class="nx-subtitle" style="margin-top:16px;">
+    Pagamento via PIX (MisticPay). Após o pagamento ser confirmado, o plano é aplicado automaticamente pelo webhook.
+  </div>
+
+  <div style="margin-top:14px;">
+    <a class="nx-btn nx-btn-ghost" href="{{ url_for('account') }}">← Voltar</a>
+  </div>
+</div>
+
+{% endblock %}

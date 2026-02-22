@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="container-nx">
+  <div class="nx-title">Editar conteúdo</div>
+  <div class="nx-subtitle">Atualize informações do filme/série.</div>
+
+  <div class="nx-card">
+    <div class="nx-card-inner">
+      <form class="nx-form" method="POST">
+        <div class="nx-field">
+          <label>Título</label>
+          <input class="nx-input" name="title" value="{{ content.title }}" required>
+        </div>
+
+        <div class="nx-field">
+          <label>Categoria principal</label>
+          <input class="nx-input" name="category" value="{{ content.category }}">
+        </div>
+
+        <div class="nx-field">
+          <label>Descrição</label>
+          <textarea class="nx-textarea" name="description">{{ content.description }}</textarea>
+        </div>
+
+        <div class="nx-field">
+          <label>Imagem (URL)</label>
+          <input class="nx-input" name="image" value="{{ content.image }}" required>
+        </div>
+
+        <div class="nx-field">
+          <label>TMDb/IMDb ID</label>
+          <input class="nx-input" name="tmdb_id" value="{{ content.tmdb_id }}">
+        </div>
+
+        <div class="nx-field">
+          <label>Tipo</label>
+          <select class="nx-select" name="content_type">
+            <option {% if content.content_type == "Filme" %}selected{% endif %}>Filme</option>
+            <option {% if content.content_type == "Serie" %}selected{% endif %}>Serie</option>
+            <option {% if content.content_type == "Em Breve" %}selected{% endif %}>Em Breve</option>
+          </select>
+        </div>
+
+        <div class="nx-field">
+          <label>Duração (segundos)</label>
+          <input class="nx-input" name="duration_seconds" type="number" min="0" value="{{ content.duration_seconds or 0 }}">
+        </div>
+
+        <div class="nx-field">
+          <label>Categorias extras</label>
+          <input class="nx-input" name="extra_categories" value="{{ extra_str or '' }}" placeholder="Ex: Infantil, Comédia, Terror">
+        </div>
+
+        <label style="display:flex; gap:10px; align-items:center;">
+          <input type="checkbox" name="premium" {% if content.is_premium %}checked{% endif %}>
+          <span><b>Premium</b></span>
+        </label>
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:10px;">
+          <button class="nx-btn nx-btn-primary" type="submit">Salvar</button>
+          <a class="nx-btn nx-btn-ghost" href="{{ url_for('admin') }}">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

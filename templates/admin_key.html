@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="container-nx">
+  <div class="nx-title">Área Administrativa</div>
+  <div class="nx-subtitle">Digite a chave para acessar o painel.</div>
+
+  <div class="nx-card" style="max-width:520px;">
+    <div class="nx-card-inner">
+      <form class="nx-form" method="POST" action="{{ url_for('admin') }}">
+        <div class="nx-field">
+          <label>Chave</label>
+          <input class="nx-input" name="admin_key" placeholder="Digite a chave" required>
+        </div>
+
+        <button class="nx-btn nx-btn-primary" type="submit">Entrar</button>
+        <a class="nx-btn nx-btn-ghost" href="{{ url_for('home') }}">Voltar</a>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="container-nx">
+  <div class="nx-title">Pagar plano {{ plan }}</div>
+  <div class="nx-subtitle">Valor: <b>R$ {{ "%.2f"|format(amount) }}</b> (PIX)</div>
+
+  <div class="nx-card">
+    <div class="nx-card-inner">
+      <div style="font-weight:900; font-size:16px;">Dados do pagador</div>
+      <div class="nx-help">A MisticPay precisa de Nome e CPF para gerar o PIX.</div>
+
+      <div class="nx-divider"></div>
+
+      <form class="nx-form" method="POST">
+        <div class="nx-field">
+          <label>Nome completo</label>
+          <input class="nx-input" name="payer_name" placeholder="Ex: João da Silva" required>
+        </div>
+
+        <div class="nx-field">
+          <label>CPF (somente números ou com pontuação)</label>
+          <input class="nx-input" name="payer_document" placeholder="Ex: 123.456.789-10" required>
+        </div>
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+          <button class="nx-btn nx-btn-primary" type="submit">Gerar PIX</button>
+          <a class="nx-btn nx-btn-ghost" href="{{ url_for('plans') }}">Cancelar</a>
+        </div>
+
+        <div class="nx-help" style="margin-top:8px;">
+          Após gerar, aguarde o webhook receber <b>COMPLETO</b> para ativar o plano automaticamente.
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

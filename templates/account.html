@@ -1,0 +1,103 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="container-nx">
+  <div class="nx-title">Conta</div>
+  <div class="nx-subtitle">Detalhes da assinatura e atalhos</div>
+
+  <div class="nx-row">
+    <div class="nx-col">
+      <div class="nx-card">
+        <div class="nx-card-inner">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div>
+              <div style="font-weight:900; font-size:16px;">Detalhes da assinatura</div>
+              <div class="nx-help">Seu plano e acesso ao Premium</div>
+            </div>
+
+            {% if user.plan == "Gold" %}
+              <span class="nx-pill warn">GOLD • vitalício</span>
+            {% elif user.plan == "Premium" %}
+              <span class="nx-pill brand">PREMIUM • 30 dias</span>
+            {% else %}
+              <span class="nx-pill">FREE</span>
+            {% endif %}
+          </div>
+
+          <div class="nx-divider"></div>
+
+          <div style="display:grid; gap:10px;">
+            <div><b>Email:</b> <span style="color:var(--muted)">{{ user.username }}</span></div>
+
+            {% if user.plan == "Premium" and user.plan_expires_at %}
+              <div><b>Expira em:</b> <span style="color:var(--muted)">{{ user.plan_expires_at.strftime("%d/%m/%Y %H:%M") }}</span></div>
+            {% elif user.plan == "Gold" %}
+              <div><b>Status:</b> <span style="color:var(--muted)">Sem expiração</span></div>
+            {% else %}
+              <div><b>Status:</b> <span style="color:var(--muted)">Conteúdo Premium bloqueado</span></div>
+            {% endif %}
+          </div>
+
+          <div class="nx-divider"></div>
+
+          <!-- ✅ AGORA É CLICÁVEL -->
+          <a class="nx-action" href="{{ url_for('plans') }}">
+            <div class="left">
+              <div class="label">Gerenciar assinatura</div>
+              <div class="hint">Alterar plano, pagar via PIX e ver status</div>
+            </div>
+            <span class="nx-btn nx-btn-ghost">Abrir</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="nx-col">
+      <div class="nx-card">
+        <div class="nx-card-inner">
+          <div style="font-weight:900; font-size:16px;">Atalhos</div>
+          <div class="nx-help">Acesso rápido às funções da conta</div>
+
+          <div class="nx-divider"></div>
+
+          <div style="display:grid; gap:12px;">
+            <a class="nx-action" href="{{ url_for('plans') }}">
+              <div class="left">
+                <div class="label">Alterar plano</div>
+                <div class="hint">Free / Premium (30 dias) / Gold (vitalício)</div>
+              </div>
+              <span class="nx-btn">Abrir</span>
+            </a>
+
+            <a class="nx-action" href="{{ url_for('manage_profiles') }}">
+              <div class="left">
+                <div class="label">Perfis</div>
+                <div class="hint">Editar / adicionar / trocar perfis</div>
+              </div>
+              <span class="nx-btn">Abrir</span>
+            </a>
+
+            <a class="nx-action" href="{{ url_for('home') }}">
+              <div class="left">
+                <div class="label">Voltar para o Linkflix</div>
+                <div class="hint">Ir para a home</div>
+              </div>
+              <span class="nx-btn nx-btn-ghost">Voltar</span>
+            </a>
+
+            <a class="nx-action" href="{{ url_for('logout') }}">
+              <div class="left">
+                <div class="label">Sair</div>
+                <div class="hint">Encerrar sessão</div>
+              </div>
+              <span class="nx-btn nx-btn-danger">Sair</span>
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

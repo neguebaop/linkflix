@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card" style="max-width:500px;margin:50px auto;text-align:left;padding:30px;">
+    <h2>Minha Conta</h2>
+    <p><strong>Email:</strong> {{ user.username }}</p>
+    <p><strong>Plano:</strong> {{ user.plan }}</p>
+
+    <h3>Gerenciar Perfis</h3>
+    <ul>
+        {% for profile in user.profiles %}
+        <li>
+            <img src="{{ profile.avatar }}" style="width:40px;height:40px;border-radius:50%;vertical-align:middle;">
+            {{ profile.name }}
+        </li>
+        {% endfor %}
+    </ul>
+    <a href="/create_profile">Adicionar novo perfil</a>
+
+    <h3>Alterar Senha</h3>
+    <p>Ainda não implementado – placeholder</p>
+</div>
+{% endblock %}

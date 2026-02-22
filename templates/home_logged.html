@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linkflix</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="logo">LINKFLIX</div>
+
+    <form method="GET" action="{{ url_for('home') }}" class="search-form">
+        <input type="text" name="search" placeholder="Pesquisar..." value="{{ request.args.get('search', '') }}">
+        <button type="submit" aria-label="Pesquisar">🔍</button>
+    </form>
+
+    <div class="nav-links">
+        <a href="{{ url_for('home') }}">Início</a>
+        <a href="{{ url_for('home', content_type='Filme') }}">Filmes</a>
+        <a href="{{ url_for('home', content_type='Serie') }}">Séries</a>
+        <a href="{{ url_for('home', content_type='Em Breve') }}">Em Breve</a>
+    </div>
+
+    <div class="profile-dropdown">
+        <button class="profile-button" type="button" aria-label="Menu de perfil">
+            <img
+              src="{% if active_profile and active_profile.avatar %}{{ active_profile.avatar }}{% else %}{{ url_for('static', filename='images/default_profile.png') }}{% endif %}"
+              class="profile-pic"
+              alt="Perfil"
+              onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default_profile.png') }}';"
+            >
+        </button>
+
+        <div class="profile-menu">
+            <a href="{{ url_for('select_profile_page') }}">Trocar Perfil</a>
+            <a href="{{ url_for('create_profile') }}">Adicionar Perfil</a>
+
+            {% if active_profile %}
+                <a href="{{ url_for('edit_profile', profile_id=active_profile.id) }}">Editar Perfil</a>
+            {% endif %}
+
+            <a href="{{ url_for('account') }}">Minha Conta</a>
+            <a href="{{ url_for('admin') }}">Admin</a>
+            <a href="{{ url_for('logout') }}">Sair</a>
+        </div>
+    </div>
+</nav>
+
+<div class="main-content">
+
+    {% if featured_content %}
+    <div class="featured">
+        <img src="{{ featured_content.image }}" class="featured-img" alt="{{ featured_content.title }}">
+        <div class="featured-info">
+            <h1>{{ featured_content.title }}</h1>
+            <p>{{ featured_content.description }}</p>
+            <a href="{{ url_for('watch', id=featured_content.id) }}" class="btn-play">▶ Assistir</a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% macro card(movie, continue_mode=False) %}
+    <div class="movie-card {% if continue_mode %}continue{% endif %}">
+        <a class="card-link" href="{{ url_for('watch', id=movie.id) }}" aria-label="Assistir {{ movie.title }}"></a>
+
+        <img src="{{ movie.image }}" alt="{{ movie.title }}">
+
+        <div class="card-overlay">
+            <div class="card-top">
+                <a href="{{ url_for('watch', id=movie.id) }}"
+                   class="card-btn play"
+                   aria-label="Assistir {{ movie.title }}"
+                   title="Assistir">▶</a>
+
+                <a href="{{ url_for('toggle_favorite', content_id=movie.id, next=request.full_path) }}"
+                   class="card-btn add"
+                   aria-label="Adicionar/Remover da lista"
+                   title="{% if favorite_ids and movie.id in favorite_ids %}Remover da lista{% else %}Adicionar à lista{% endif %}">
+                    {% if favorite_ids and movie.id in favorite_ids %}✓{% else %}＋{% endif %}
+                </a>
+            </div>
+
+            <h4 class="card-title">{{ movie.title }}</h4>
+
+            <div class="card-meta">
+                {% if movie.content_type %}
+                    <span class="meta">{{ movie.content_type }}</span>
+                    <span class="dot">•</span>
+                {% endif %}
+                {% if movie.category %}
+                    <span class="badge">{{ movie.category }}</span>
+                {% else %}
+                    <span class="badge">Linkflix</span>
+                {% endif %}
+            </div>
+
+            {% if movie.description %}
+                <p class="card-desc">{{ movie.description }}</p>
+            {% else %}
+                <p class="card-desc">Assista agora no Linkflix.</p>
+            {% endif %}
+        </div>
+
+        {% if continue_mode %}
+        <div class="progress-bar">
+            <span style="width: 35%"></span>
+        </div>
+        {% endif %}
+    </div>
+    {% endmacro %}
+
+    <h2 class="section-title">Continuar assistindo</h2>
+    <div class="row-wrapper">
+        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
+        <div class="row">
+            {% for movie in continuar %}
+                {{ card(movie, True) }}
+            {% endfor %}
+        </div>
+        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
+    </div>
+
+    <h2 class="section-title">Filmes</h2>
+    <div class="row-wrapper">
+        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
+        <div class="row">
+            {% for movie in filmes %}
+                {{ card(movie) }}
+            {% endfor %}
+        </div>
+        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
+    </div>
+
+    <h2 class="section-title">Filmes de Ação</h2>
+    <div class="row-wrapper">
+        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
+        <div class="row">
+            {% for movie in acao %}
+                {{ card(movie) }}
+            {% endfor %}
+        </div>
+        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
+    </div>
+
+    <h2 class="section-title">Animes</h2>
+    <div class="row-wrapper">
+        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
+        <div class="row">
+            {% for movie in anime %}
+                {{ card(movie) }}
+            {% endfor %}
+        </div>
+        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
+    </div>
+
+</div>
+
+<script>
+function scrollRow(button, direction) {
+    const row = button.parentElement.querySelector('.row');
+    row.scrollBy({ left: direction * 400, behavior: 'smooth' });
+}
+</script>
+
+</body>
+</html>

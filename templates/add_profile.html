@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Adicionar Perfil - LinkFlix</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #141414;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .card {
+            background-color: #222;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #333;
+            color: white;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #e50914;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #ff1a1a;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Criar Novo Perfil</h2>
+    <form method="POST">
+        <input type="text" name="name" placeholder="Nome do Perfil" required>
+        <input type="text" name="avatar" placeholder="URL da Foto (opcional)">
+        <button type="submit">Criar Perfil</button>
+    </form>
+</div>
+
+</body>
+</html>

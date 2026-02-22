@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Linkflix</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+
+<nav class="navbar">
+  <div class="nav-left">
+    <div class="logo">LINKFLIX</div>
+
+    <div class="nav-links">
+      <a href="{{ url_for('home') }}">Início</a>
+      <a href="{{ url_for('home', content_type='Filme') }}">Filmes</a>
+      <a href="{{ url_for('home', content_type='Serie') }}">Séries</a>
+      <a href="{{ url_for('home', content_type='Em Breve') }}">Em Breve</a>
+    </div>
+  </div>
+
+  <div class="nav-right">
+    <form method="GET" action="{{ url_for('home') }}" class="search-form">
+      <i class="fa fa-search"></i>
+      <input type="text" name="search" placeholder="Títulos, gêneros" value="{{ request.args.get('search', '') }}">
+    </form>
+
+    <i class="fa-regular fa-bell nav-icon"></i>
+
+    <div class="profile-dropdown">
+      <button class="profile-button" type="button" aria-label="Menu de perfil">
+        <img
+          src="{% if active_profile and active_profile.avatar %}{{ active_profile.avatar }}{% else %}{{ url_for('static', filename='images/default_profile.png') }}{% endif %}"
+          class="profile-pic"
+          alt="Perfil"
+          onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default_profile.png') }}';"
+        >
+        <i class="fa fa-caret-down"></i>
+      </button>
+
+      <div class="profile-menu">
+        <a href="{{ url_for('account') }}">Minha Conta</a>
+        <a href="{{ url_for('select_profile_page') }}">Trocar Perfil</a>
+        <a href="{{ url_for('create_profile') }}">Adicionar Perfil</a>
+
+        {% if active_profile %}
+          <a href="{{ url_for('edit_profile', profile_id=active_profile.id) }}">Editar Perfil</a>
+        {% endif %}
+
+        <a href="{{ url_for('admin') }}">Admin</a>
+        <a href="{{ url_for('logout') }}">Sair</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="main-content">
+  {% block content %}{% endblock %}
+</div>
+
+</body>
+</html>

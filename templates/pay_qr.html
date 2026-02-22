@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="container-nx">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+    <div>
+      <div class="nx-title" style="margin-bottom:0;">PIX gerado <span style="color:var(--ok);">✓</span></div>
+      <div class="nx-subtitle">Plano {{ plan }} — <b>R$ {{ "%.2f"|format(amount) }}</b></div>
+    </div>
+    <a class="nx-btn nx-btn-ghost" href="{{ url_for('plans') }}">← Voltar</a>
+  </div>
+
+  <div class="nx-card" style="margin-top:16px;">
+    <div class="nx-card-inner">
+      <div class="nx-qr">
+
+        <div>
+          <div style="font-weight:900; font-size:16px; margin-bottom:10px;">QR Code</div>
+          {% if qrcode_url %}
+            <img src="{{ qrcode_url }}" alt="QR Code PIX">
+          {% else %}
+            <div class="nx-help">QR Code não retornou (verifique resposta da API).</div>
+          {% endif %}
+          <div class="nx-help" style="margin-top:10px;">
+            Aguarde a confirmação. Quando o webhook receber <b>COMPLETO</b>, seu plano ativa automaticamente.
+          </div>
+        </div>
+
+        <div>
+          <div style="font-weight:900; font-size:16px; margin-bottom:10px;">PIX Copia e Cola</div>
+          <textarea class="nx-codebox" id="pixcode" readonly>{{ copy_paste or "" }}</textarea>
+
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:10px;">
+            <button class="nx-btn" type="button" onclick="copyPix()">Copiar código</button>
+            <a class="nx-btn nx-btn-primary" href="{{ url_for('account') }}">Ir para Minha Conta</a>
+          </div>
+
+          <div class="nx-help" style="margin-top:10px;">
+            ID transação (MisticPay): <b>{{ misticpay_transaction_id }}</b><br>
+            ID interno (Linkflix): <b>{{ external_transaction_id }}</b>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyPix(){
+  const el = document.getElementById("pixcode");
+  el.select();
+  el.setSelectionRange(0, 999999);
+  document.execCommand("copy");
+}
+</script>
+
+{% endblock %}

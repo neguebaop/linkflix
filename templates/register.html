@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Criar Conta - LinkFlix</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.6)),
+                        url("{{ url_for('static', filename='images/banner.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: white;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px 50px;
+        }
+
+        .topbar h1 {
+            color: #e50914;
+            margin: 0;
+        }
+
+        .topbar a {
+            background-color: #e50914;
+            padding: 8px 15px;
+            border-radius: 4px;
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .card {
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 50px;
+            width: 350px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 25px rgba(255,0,0,0.3);
+            text-align: center;
+        }
+
+        .logo {
+            width: 120px;
+            margin-bottom: 25px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #222;
+            color: white;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            background-color: #333;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #e50914;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #ff1a1a;
+            transform: scale(1.03);
+        }
+
+        .error {
+            background-color: rgba(255,0,0,0.2);
+            color: #ff4d4d;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .link {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #bbb;
+        }
+
+        .link a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h1>LINKFLIX</h1>
+    <a href="/">Voltar</a>
+</div>
+
+<div class="container">
+    <div class="card">
+        <img src="{{ url_for('static', filename='images/logo.jpg') }}" class="logo">
+
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST">
+            <input type="email" name="email" placeholder="Email" required>
+            <input type="password" name="password" placeholder="Senha" required>
+            <button type="submit">Criar Conta</button>
+        </form>
+
+        <div class="link">
+            Já tem conta? <a href="/login">Entrar</a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

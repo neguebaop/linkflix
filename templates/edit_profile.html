@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Perfil - LinkFlix</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #141414;
+            color: white;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 80px auto;
+            background-color: #1f1f1f;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.6);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .avatar-preview {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .avatar-preview img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #e50914;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #bbb;
+        }
+
+        input[type="text"],
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: none;
+            background-color: #333;
+            color: white;
+        }
+
+        input[type="file"] {
+            background-color: #222;
+        }
+
+        .buttons {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .save-btn {
+            background-color: #e50914;
+            color: white;
+        }
+
+        .cancel-btn {
+            background-color: #555;
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            line-height: 35px;
+            display: inline-block;
+            padding: 0 20px;
+            border-radius: 5px;
+        }
+
+        .save-btn:hover {
+            background-color: #ff1f1f;
+        }
+
+        .cancel-btn:hover {
+            background-color: #777;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Editar Perfil</h1>
+
+    <form method="POST" enctype="multipart/form-data">
+
+        <div class="avatar-preview">
+            <img
+              src="{% if profile.avatar %}{{ profile.avatar }}{% else %}{{ url_for('static', filename='images/default_profile.png') }}{% endif %}"
+              id="preview"
+              onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/default_profile.png') }}';"
+            >
+        </div>
+
+        <label>Nome</label>
+        <input type="text" name="name" value="{{ profile.name }}" placeholder="Nome do perfil">
+
+        <label>URL do Avatar (opcional)</label>
+        <input type="text" name="avatar_url" value="{{ profile.avatar }}" placeholder="Cole a URL da imagem aqui">
+
+        <label>Ou enviar um avatar (png/jpg/webp)</label>
+        <input type="file" name="avatar_file" accept="image/*" onchange="previewImage(event)">
+
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <div class="buttons">
+            <a href="{{ url_for('manage_profiles') }}" class="cancel-btn">Cancelar</a>
+            <button type="submit" class="save-btn">Salvar</button>
+        </div>
+
+    </form>
+</div>
+
+<script>
+function previewImage(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(){
+        document.getElementById('preview').src = reader.result;
+    };
+    reader.readAsDataURL(file);
+}
+</script>
+
+</body>
+</html>

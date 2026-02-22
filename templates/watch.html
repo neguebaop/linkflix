@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ content.title }} - Linkflix</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body class="watch-body">
+
+  <div class="watch-topbar">
+    <a href="{{ url_for('home') }}" class="watch-back">← Voltar</a>
+
+    <div class="watch-title-wrap">
+      <div class="watch-title">{{ content.title }}</div>
+      <div class="watch-sub">
+        {{ content.content_type }}{% if content.category %} • {{ content.category }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="watch-wrap">
+    <div class="watch-player">
+      <iframe
+        src="https://playerflixapi.com/filme/{{ content.tmdb_id }}"
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+        allowfullscreen>
+      </iframe>
+    </div>
+
+    <div class="watch-info">
+      {% if content.description %}
+        <p class="watch-desc">{{ content.description }}</p>
+      {% endif %}
+
+      <div class="watch-progress-card">
+        <div class="watch-progress-top">
+          <span>Progresso</span>
+          <span id="pctText">0%</span>
+        </div>
+        <div class="watch-progress-bar">
+          <span id="pctBar" style="width:0%"></span>
+        </div>
+
+        <div class="watch-progress-actions">
+          <button class="btn-ghost" type="button" onclick="setProgress(0)">Recomeçar</button>
+          <button class="btn-ghost" type="button" onclick="setProgress(25)">25%</button>
+          <button class="btn-ghost" type="button" onclick="setProgress(50)">50%</button>
+          <button class="btn-ghost" type="button" onclick="setProgress(75)">75%</button>
+          <button class="btn-primary" type="button" onclick="setProgress(95)">Quase no fim</button>
+        </div>
+
+        <small class="watch-hint">
+          * Como o player é externo, o progresso é estimado pelo tempo assistindo/ações acima.
+        </small>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const contentId = {{ content.id }};
+  let currentPct = 0;
+  let startedAt = Date.now();
+  let lastSent = 0;
+
+  function paint(pct){
+    currentPct = Math.max(0, Math.min(100, Math.round(pct)));
+    document.getElementById("pctText").innerText = currentPct + "%";
+    document.getElementById("pctBar").style.width = currentPct + "%";
+  }
+
+  async function sendProgress(pct){
+    try{
+      await fetch("/api/progress/update", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ content_id: contentId, progress_percent: pct })
+      });
+    }catch(e){}
+  }
+
+  function setProgress(pct){
+    paint(pct);
+    sendProgress(currentPct);
+  }
+
+  async function loadProgress(){
+    try{
+      const r = await fetch(`/api/progress/get/${contentId}`);
+      const data = await r.json();
+      if(data && typeof data.progress_percent === "number"){
+        paint(data.progress_percent);
+      }
+    }catch(e){}
+  }
+
+  // “auto”: a cada 15s, soma um pouquinho (estimativa)
+  setInterval(() => {
+    const now = Date.now();
+    if(now - lastSent < 15000) return;
+    lastSent = now;
+
+    // estimativa: 1% a cada 20s (ajuste se quiser)
+    const elapsedSec = (now - startedAt) / 1000;
+    const estimatedPct = Math.min(95, currentPct + Math.floor(elapsedSec / 20));
+    startedAt = now;
+
+    if(estimatedPct > currentPct){
+      paint(estimatedPct);
+      sendProgress(currentPct);
+    }
+  }, 3000);
+
+  // salva ao sair
+  window.addEventListener("beforeunload", () => {
+    navigator.sendBeacon(
+      "/api/progress/update",
+      new Blob([JSON.stringify({content_id: contentId, progress_percent: currentPct})], {type:"application/json"})
+    );
+  });
+
+  loadProgress();
+</script>
+
+</body>
+</html>

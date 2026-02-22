@@ -1,0 +1,133 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="container-nx">
+  <div class="nx-title">Painel Admin</div>
+  <div class="nx-subtitle">Adicione, edite e exclua conteúdos do Linkflix.</div>
+
+  <div class="nx-row">
+    <div class="nx-col">
+      <div class="nx-card">
+        <div class="nx-card-inner">
+          <div style="font-weight:900; font-size:16px;">Adicionar conteúdo</div>
+          <div class="nx-help">Dica: categorias extras separadas por vírgula.</div>
+
+          <div class="nx-divider"></div>
+
+          <form class="nx-form" method="POST">
+            <div class="nx-field">
+              <label>Título</label>
+              <input class="nx-input" name="title" placeholder="Ex: Gente Grande" required>
+            </div>
+
+            <div class="nx-field">
+              <label>Categoria principal</label>
+              <input class="nx-input" name="category" placeholder="Ex: Ação">
+            </div>
+
+            <div class="nx-field">
+              <label>Descrição</label>
+              <textarea class="nx-textarea" name="description" placeholder="Descrição curta (aparece no card)"></textarea>
+            </div>
+
+            <div class="nx-field">
+              <label>Imagem (URL)</label>
+              <input class="nx-input" name="image" placeholder="https://..." required>
+            </div>
+
+            <div class="nx-field">
+              <label>TMDb/IMDb ID</label>
+              <input class="nx-input" name="tmdb_id" placeholder="Ex: 550 ou tt0137523">
+            </div>
+
+            <div class="nx-field">
+              <label>Tipo</label>
+              <select class="nx-select" name="content_type">
+                <option>Filme</option>
+                <option>Serie</option>
+                <option>Em Breve</option>
+              </select>
+            </div>
+
+            <div class="nx-field">
+              <label>Duração (segundos)</label>
+              <input class="nx-input" name="duration_seconds" type="number" min="0" placeholder="Ex: 5400">
+              <div class="nx-help">Use para a barrinha do “Continuar assistindo”.</div>
+            </div>
+
+            <div class="nx-field">
+              <label>Categorias extras</label>
+              <input class="nx-input" name="extra_categories" placeholder="Ex: Infantil, Comédia, Terror">
+            </div>
+
+            <label style="display:flex; gap:10px; align-items:center;">
+              <input type="checkbox" name="premium">
+              <span><b>Marcar como Premium</b> <span class="nx-help">Free não assiste Premium. Premium/Gold assistem.</span></span>
+            </label>
+
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:10px;">
+              <button class="nx-btn nx-btn-primary" type="submit">+ Adicionar</button>
+              <a class="nx-btn nx-btn-ghost" href="{{ url_for('home') }}">Voltar</a>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="nx-col">
+      <div class="nx-card">
+        <div class="nx-card-inner">
+          <div style="font-weight:900; font-size:16px;">Conteúdos cadastrados</div>
+          <div class="nx-help">Gerencie seus filmes/séries.</div>
+
+          <div class="nx-divider"></div>
+
+          {% if contents and contents|length > 0 %}
+            <table class="nx-table">
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Tipo</th>
+                  <th>Categoria</th>
+                  <th>Premium</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in contents %}
+                <tr>
+                  <td>
+                    <b>{{ c.title }}</b><br>
+                    <span class="nx-help">ID: {{ c.id }}</span>
+                  </td>
+                  <td>{{ c.content_type }}</td>
+                  <td>{{ c.category }}</td>
+                  <td>
+                    {% if c.is_premium %}
+                      <span class="nx-pill brand">Premium</span>
+                    {% else %}
+                      <span class="nx-pill">Free</span>
+                    {% endif %}
+                  </td>
+                  <td style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <a class="nx-btn" href="{{ url_for('watch', id=c.id) }}">Ver</a>
+                    <a class="nx-btn nx-btn-ghost" href="{{ url_for('admin_edit', id=c.id) }}">Editar</a>
+                    <form method="POST" action="{{ url_for('admin_delete', id=c.id) }}" onsubmit="return confirm('Excluir este conteúdo?')">
+                      <button class="nx-btn nx-btn-danger" type="submit">Excluir</button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <div class="nx-help">Nenhum conteúdo cadastrado ainda.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

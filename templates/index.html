@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LinkFlix</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: black;
+            color: white;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 50px;
+            box-sizing: border-box;
+            z-index: 2;
+        }
+
+        .header img {
+            width: 150px;
+        }
+
+        .header a {
+            background-color: red;
+            padding: 8px 18px;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .banner {
+            height: 100vh;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.2)),
+                        url("{{ url_for('static', filename='images/banner.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            flex-direction: column;
+        }
+
+        .banner h1 {
+            font-size: 48px;
+            max-width: 700px;
+        }
+
+        .banner p {
+            font-size: 20px;
+            margin-top: 20px;
+        }
+
+        .banner a {
+            margin-top: 30px;
+            padding: 12px 25px;
+            background-color: red;
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            border-radius: 4px;
+        }
+
+        .banner a:hover {
+            background-color: #cc0000;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <img src="{{ url_for('static', filename='images/logo.jpg') }}">
+    <a href="/login">Entrar</a>
+</div>
+
+<div class="banner">
+    <h1>Filmes, Séries e Animes ilimitados</h1>
+    <p>Assista gratuitamente aos clássicos disponíveis em domínio público.</p>
+    <a href="/register">Começar agora</a>
+</div>
+
+</body>
+</html>
