@@ -17,22 +17,36 @@
     <div class="nav-links">
       <a href="{{ url_for('home') }}">Início</a>
       <a href="{{ url_for('filmes_page') }}">Filmes</a>
-<a href="{{ url_for('series_page') }}">Séries</a>
-<a href="{{ url_for('embreve_page') }}">Em Breve</a>
+      <a href="{{ url_for('series_page') }}">Séries</a>
+      <a href="{{ url_for('embreve_page') }}">Em Breve</a>
     </div>
   </div>
 
   <div class="nav-right">
-    <form method="GET" action="{{ url_for('home') }}" class="search-form" role="search">
-      <i class="fa fa-search"></i>
-      <input
-        type="text"
-        name="search"
-        placeholder="Títulos, gêneros"
-        value="{{ request.args.get('search', '') }}"
-        aria-label="Pesquisar títulos e gêneros"
-      >
-    </form>
+
+    <!-- ✅ SEARCH WRAP (Netflix style no mobile) -->
+    <div class="search-wrap">
+      <!-- botão lupa (aparece no mobile) -->
+      <button class="search-toggle" type="button" aria-label="Abrir pesquisa">
+        <i class="fa fa-search"></i>
+      </button>
+
+      <!-- form real (desktop sempre, mobile abre quando clicar na lupa) -->
+      <form method="GET" action="{{ url_for('home') }}" class="search-form" role="search">
+        <i class="fa fa-search"></i>
+        <input
+          id="navSearchInput"
+          type="text"
+          name="search"
+          placeholder="Títulos, gêneros"
+          value="{{ request.args.get('search', '') }}"
+          aria-label="Pesquisar títulos e gêneros"
+        >
+        <button class="search-close" type="button" aria-label="Fechar pesquisa">
+          <i class="fa fa-times"></i>
+        </button>
+      </form>
+    </div>
 
     <i class="fa-regular fa-bell nav-icon" aria-label="Notificações"></i>
 
@@ -66,6 +80,35 @@
 <div class="main-content">
   {% block content %}{% endblock %}
 </div>
+
+<!-- ✅ JS: abre/fecha pesquisa no mobile -->
+<script>
+  (function(){
+    const navbar = document.querySelector('.navbar');
+    const toggle = document.querySelector('.search-toggle');
+    const closeBtn = document.querySelector('.search-close');
+    const input = document.querySelector('#navSearchInput');
+
+    if(!navbar || !toggle || !closeBtn || !input) return;
+
+    function openSearch(){
+      navbar.classList.add('search-open');
+      setTimeout(() => input.focus(), 50);
+    }
+
+    function closeSearch(){
+      navbar.classList.remove('search-open');
+      input.blur();
+    }
+
+    toggle.addEventListener('click', openSearch);
+    closeBtn.addEventListener('click', closeSearch);
+
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape') closeSearch();
+    });
+  })();
+</script>
 
 </body>
 </html>
