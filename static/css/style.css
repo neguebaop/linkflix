@@ -1004,3 +1004,51 @@ a:hover{ color: #fff; }
     display: initial;
   }
 }
+
+/* ===== FIX: search clicável e acima de tudo ===== */
+.search-wrap { position: relative; z-index: 3000; }
+.navbar .search-form { position: relative; z-index: 3001; pointer-events: auto; }
+.navbar .search-form input { pointer-events: auto; }
+.search-toggle, .search-close { pointer-events: auto; }
+
+/* evita algum overlay invisível por cima */
+.nav-left, .nav-right, .nav-links, .profile-dropdown { position: relative; z-index: 1; }
+
+/* ===== Desktop: mostra barra normal, esconde lupa/close ===== */
+@media (min-width: 601px){
+  .search-toggle { display: none !important; }
+  .search-close  { display: none !important; }
+  .navbar .search-form { 
+    display: flex !important;
+    position: static !important;
+    transform: none !important;
+    width: 280px;
+    max-width: 34vw;
+  }
+  .navbar.search-open .nav-links,
+  .navbar.search-open .nav-icon,
+  .navbar.search-open .profile-dropdown{
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    width: auto !important;
+  }
+}
+
+/* ===== Mobile: começa fechado (só lupa), abre quando clicar ===== */
+@media (max-width: 600px){
+  .search-toggle { display: inline-flex !important; }
+
+  .navbar .search-form{
+    display: none !important;
+    position: absolute !important;
+    right: 0 !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: min(78vw, 360px) !important;
+    height: 38px !important;
+    z-index: 4000 !important;
+  }
+
+  .navbar.search-open .search-form{ display: flex !important; }
+  .navbar.search-open .search-close{ display: inline-flex !important; }
+}
