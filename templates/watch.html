@@ -5,9 +5,124 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{ content.title }} - Linkflix</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <!-- ✅ Estilos do aviso (Netflix-like) -->
+  <style>
+    .lf-overlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.78);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 9999;
+      backdrop-filter: blur(2px);
+    }
+    .lf-overlay.is-open{ display:flex; }
+
+    .lf-modal{
+      width: min(560px, 100%);
+      background: #111;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+      overflow: hidden;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color: #fff;
+    }
+    .lf-modal__header{ padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .lf-modal__header h2{ margin:0; font-size: 18px; font-weight: 700; }
+    .lf-modal__body{ padding: 16px 18px; }
+    .lf-muted{ margin:0 0 14px; color: rgba(255,255,255,.75); line-height: 1.45; }
+
+    .lf-steps{ display: grid; gap: 10px; margin: 12px 0 14px; }
+    .lf-step{
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .lf-step__n{
+      width: 24px; height: 24px;
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      border-radius: 999px;
+      background: rgba(229,9,20,.15);
+      border: 1px solid rgba(229,9,20,.35);
+      color: #fff;
+      font-weight: 700;
+      font-size: 12px;
+      flex: 0 0 auto;
+    }
+
+    .lf-check{
+      display: flex; gap: 10px; align-items: center;
+      margin-top: 10px;
+      color: rgba(255,255,255,.8);
+      font-size: 14px;
+      user-select: none;
+    }
+    .lf-check input{ width: 16px; height: 16px; }
+
+    .lf-modal__footer{
+      padding: 14px 18px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .lf-btn{
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .lf-btn--primary{
+      background: #E50914;
+      color: #fff;
+    }
+    .lf-btn--primary:hover{
+      filter: brightness(1.05);
+    }
+  </style>
 </head>
 
 <body class="watch-body">
+
+  <!-- ✅ Overlay Netflix-like: aviso sobre anúncios -->
+  <div id="adWarningOverlay" class="lf-overlay" aria-hidden="true">
+    <div class="lf-modal" role="dialog" aria-modal="true" aria-labelledby="lfModalTitle">
+      <div class="lf-modal__header">
+        <h2 id="lfModalTitle">Aviso rápido</h2>
+      </div>
+
+      <div class="lf-modal__body">
+        <p class="lf-muted">
+          Alguns players externos podem abrir anúncios em novas abas/janelas antes de iniciar o vídeo.
+        </p>
+
+        <div class="lf-steps">
+          <div class="lf-step"><span class="lf-step__n">1</span> Clique em <b>Play</b> no player.</div>
+          <div class="lf-step"><span class="lf-step__n">2</span> Se abrir anúncio, <b>feche</b> a aba/janela.</div>
+          <div class="lf-step"><span class="lf-step__n">3</span> Volte e clique em <b>Play</b> novamente até iniciar.</div>
+        </div>
+
+        <label class="lf-check">
+          <input type="checkbox" id="lfDontShow" />
+          <span>Não mostrar por 24 horas</span>
+        </label>
+      </div>
+
+      <div class="lf-modal__footer">
+        <button id="lfCloseBtn" class="lf-btn lf-btn--primary" type="button">Entendi</button>
+      </div>
+    </div>
+  </div>
 
   <div class="watch-topbar">
     <a href="{{ url_for('home') }}" class="watch-back">← Voltar</a>
@@ -59,6 +174,47 @@
   </div>
 
 <script>
+  // ✅ Controla o aviso (não mostrar por 24h)
+  (function () {
+    const overlay = document.getElementById("adWarningOverlay");
+    const closeBtn = document.getElementById("lfCloseBtn");
+    const dontShow = document.getElementById("lfDontShow");
+    const KEY = "lf_hide_ad_warning_until";
+
+    function shouldShow() {
+      try {
+        const until = Number(localStorage.getItem(KEY) || 0);
+        return !until || Date.now() > until;
+      } catch (e) {
+        return true;
+      }
+    }
+
+    function open() {
+      overlay.classList.add("is-open");
+      overlay.setAttribute("aria-hidden", "false");
+    }
+
+    function close() {
+      if (dontShow && dontShow.checked) {
+        try {
+          const until = Date.now() + (24 * 60 * 60 * 1000);
+          localStorage.setItem(KEY, String(until));
+        } catch (e) {}
+      }
+      overlay.classList.remove("is-open");
+      overlay.setAttribute("aria-hidden", "true");
+    }
+
+    closeBtn.addEventListener("click", close);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+
+    if (shouldShow()) open();
+  })();
+
+  // ✅ SEU CÓDIGO DE PROGRESSO (mantido)
   const contentId = {{ content.id }};
   let currentPct = 0;
   let startedAt = Date.now();
