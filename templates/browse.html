@@ -1,0 +1,101 @@
+{% extends "layout.html" %}
+{% block content %}
+
+{% macro card(movie) %}
+  <div class="movie-card {% if progress_map and progress_map.get(movie.id) %}continue{% endif %}">
+      <a class="card-link" href="{{ url_for('watch', id=movie.id) }}" aria-label="Assistir {{ movie.title }}"></a>
+
+      <img src="{{ movie.image }}" alt="{{ movie.title }}">
+
+      <div class="card-overlay">
+          <div class="card-top">
+              <a href="{{ url_for('watch', id=movie.id) }}"
+                 class="card-btn play"
+                 aria-label="Assistir {{ movie.title }}"
+                 title="Assistir">▶</a>
+
+              <a href="{{ url_for('toggle_favorite', content_id=movie.id, next=request.full_path) }}"
+                 class="card-btn add"
+                 aria-label="Adicionar/Remover da lista"
+                 title="{% if favorite_ids and movie.id in favorite_ids %}Remover da lista{% else %}Adicionar à lista{% endif %}">
+                  {% if favorite_ids and movie.id in favorite_ids %}✓{% else %}＋{% endif %}
+              </a>
+          </div>
+
+          <h4 class="card-title">{{ movie.title }}</h4>
+
+          <div class="card-meta">
+              {% if movie.content_type %}
+                  <span class="meta">{{ movie.content_type }}</span>
+                  <span class="dot">•</span>
+              {% endif %}
+              {% if movie.category %}
+                  <span class="badge">{{ movie.category }}</span>
+              {% else %}
+                  <span class="badge">Linkflix</span>
+              {% endif %}
+          </div>
+
+          {% if movie.description %}
+              <p class="card-desc">{{ movie.description }}</p>
+          {% else %}
+              <p class="card-desc">Assista agora no Linkflix.</p>
+          {% endif %}
+      </div>
+
+      {% if progress_map and progress_map.get(movie.id) %}
+      <div class="progress-bar">
+          <span style="width: {{ progress_map.get(movie.id) }}%"></span>
+      </div>
+      {% endif %}
+  </div>
+{% endmacro %}
+
+<div class="browse-top">
+  <h1 class="browse-title">{{ page_title }}</h1>
+
+  <div class="genre-dropdown">
+    <button class="genre-btn" type="button" onclick="toggleGenres()" aria-haspopup="true" aria-expanded="false">
+      Gêneros <i class="fa fa-caret-down"></i>
+    </button>
+
+    <div class="genre-menu" id="genreMenu">
+      <a href="{{ request.path }}{% if search %}?search={{ search|urlencode }}{% endif %}"
+         class="{% if not selected_genre %}active{% endif %}">
+        Todos
+      </a>
+
+      {% for g in genres %}
+        <a href="{{ request.path }}?genre={{ g|urlencode }}{% if search %}&search={{ search|urlencode }}{% endif %}"
+           class="{% if selected_genre == g %}active{% endif %}">
+          {{ g }}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="browse-grid">
+  {% for movie in items %}
+    {{ card(movie) }}
+  {% else %}
+    <p style="opacity:.8;">Nada encontrado.</p>
+  {% endfor %}
+</div>
+
+<script>
+function toggleGenres(){
+  const menu = document.getElementById("genreMenu");
+  menu.classList.toggle("open");
+}
+
+// fecha ao clicar fora
+document.addEventListener("click", function(e){
+  const dd = document.querySelector(".genre-dropdown");
+  const menu = document.getElementById("genreMenu");
+  if (!dd || !menu) return;
+  if (!dd.contains(e.target)) menu.classList.remove("open");
+});
+</script>
+
+{% endblock %}
