@@ -214,11 +214,13 @@
     if (shouldShow()) open();
   })();
 
-  // ✅ SEU CÓDIGO DE PROGRESSO (mantido)
+  // ✅ PROGRESSO compatível com seu app.py (/progress/update/<id>)
   const contentId = {{ content.id }};
-  let currentPct = 0;
+  const updateUrl = `/progress/update/${contentId}`;
+
+  let currentPct = {{ progress_pct|default(0) }};
   let startedAt = Date.now();
-  let lastSent = 0;
+  let lastSentAt = 0;
 
   function paint(pct){
     currentPct = Math.max(0, Math.min(100, Math.round(pct)));
@@ -226,57 +228,63 @@
     document.getElementById("pctBar").style.width = currentPct + "%";
   }
 
-  async function sendProgress(pct){
+  async function sendProgressPercent(pct){
+    // Converte % em "position/duration" pra caber no endpoint do backend
+    // Ex: 50% => position=50, duration=100 (percent = position/duration)
+    const safePct = Math.max(0, Math.min(100, Math.round(pct)));
+    const duration = 100;
+    const position = safePct;
+
     try{
-      await fetch("/api/progress/update", {
+      await fetch(updateUrl, {
         method: "POST",
         headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ content_id: contentId, progress_percent: pct })
+        body: JSON.stringify({ position, duration })
       });
     }catch(e){}
   }
 
   function setProgress(pct){
     paint(pct);
-    sendProgress(currentPct);
+    sendProgressPercent(currentPct);
   }
 
-  async function loadProgress(){
-    try{
-      const r = await fetch(`/api/progress/get/${contentId}`);
-      const data = await r.json();
-      if(data && typeof data.progress_percent === "number"){
-        paint(data.progress_percent);
-      }
-    }catch(e){}
-  }
-
-  // “auto”: a cada 15s, soma um pouquinho (estimativa)
+  // “auto”: a cada 15s, soma um pouquinho (estimativa) e salva
   setInterval(() => {
     const now = Date.now();
-    if(now - lastSent < 15000) return;
-    lastSent = now;
 
-    // estimativa: 1% a cada 20s (ajuste se quiser)
+    // manda no máximo a cada 15s
+    if(now - lastSentAt < 15000) return;
+
+    // estimativa: 1% a cada 20s
     const elapsedSec = (now - startedAt) / 1000;
-    const estimatedPct = Math.min(95, currentPct + Math.floor(elapsedSec / 20));
+    const inc = Math.floor(elapsedSec / 20);
     startedAt = now;
 
+    if(inc <= 0) return;
+
+    const estimatedPct = Math.min(95, currentPct + inc);
     if(estimatedPct > currentPct){
       paint(estimatedPct);
-      sendProgress(currentPct);
+      lastSentAt = now;
+      sendProgressPercent(currentPct);
     }
   }, 3000);
 
   // salva ao sair
   window.addEventListener("beforeunload", () => {
-    navigator.sendBeacon(
-      "/api/progress/update",
-      new Blob([JSON.stringify({content_id: contentId, progress_percent: currentPct})], {type:"application/json"})
-    );
+    const duration = 100;
+    const position = Math.max(0, Math.min(100, Math.round(currentPct)));
+    try{
+      navigator.sendBeacon(
+        updateUrl,
+        new Blob([JSON.stringify({ position, duration })], {type:"application/json"})
+      );
+    }catch(e){}
   });
 
-  loadProgress();
+  // pinta progresso inicial vindo do backend (watch route já calcula progress_pct)
+  paint(currentPct);
 </script>
 
 </body>
