@@ -23,12 +23,18 @@
   </div>
 
   <div class="nav-right">
-    <form method="GET" action="{{ url_for('home') }}" class="search-form">
+    <form method="GET" action="{{ url_for('home') }}" class="search-form" role="search">
       <i class="fa fa-search"></i>
-      <input type="text" name="search" placeholder="Títulos, gêneros" value="{{ request.args.get('search', '') }}">
+      <input
+        type="text"
+        name="search"
+        placeholder="Títulos, gêneros"
+        value="{{ request.args.get('search', '') }}"
+        aria-label="Pesquisar títulos e gêneros"
+      >
     </form>
 
-    <i class="fa-regular fa-bell nav-icon"></i>
+    <i class="fa-regular fa-bell nav-icon" aria-label="Notificações"></i>
 
     <div class="profile-dropdown">
       <button class="profile-button" type="button" aria-label="Menu de perfil">
