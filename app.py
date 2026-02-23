@@ -1192,6 +1192,55 @@ def misticpay_webhook():
 
     return jsonify({"ok": True})
 
+# =========================================================
+# ====================== TMDB IMPORT =======================
+# =========================================================
+
+@app.route("/api/tmdb/import")
+@login_required
+def api_tmdb_import():
+    item_type = request.args.get("type", "").strip().lower()
+    tmdb_id = request.args.get("id", "").strip()
+
+    if not tmdb_id:
+        return jsonify({"ok": False, "error": "ID não informado."})
+
+    if item_type not in ("movie", "tv"):
+        item_type = "movie"
+
+    if not TMDB_API_KEY:
+        return jsonify({"ok": False, "error": "TMDB_API_KEY não configurada."})
+
+    try:
+        url = f"https://api.themoviedb.org/3/{item_type}/{tmdb_id}"
+        params = {
+            "api_key": TMDB_API_KEY,
+            "language": "pt-BR"
+        }
+
+        r = requests.get(url, params=params, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+
+        title = data.get("title") if item_type == "movie" else data.get("name")
+        overview = data.get("overview")
+        poster = data.get("poster_path")
+        genres = [g["name"] for g in data.get("genres", [])]
+
+        image = f"https://image.tmdb.org/t/p/w780{poster}" if poster else ""
+
+        return jsonify({
+            "ok": True,
+            "title": title,
+            "description": overview,
+            "image": image,
+            "tmdb_id": tmdb_id,
+            "content_type": "Filme" if item_type == "movie" else "Serie",
+            "genres": genres
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
 
 # =========================================================
 # ============================ ADMIN ========================
