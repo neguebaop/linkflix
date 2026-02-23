@@ -14,35 +14,64 @@
 
           <div class="nx-divider"></div>
 
+          <!-- ✅ IMPORTAR DO TMDB -->
+          <div class="nx-field">
+            <label>Importar do TMDB (cole link ou ID)</label>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <input id="tmdbImportInput" class="nx-input" placeholder="Ex: https://www.themoviedb.org/tv/224372 ou 224372">
+              <button id="tmdbImportBtn" class="nx-btn nx-btn-ghost" type="button">Importar</button>
+            </div>
+            <div class="nx-help">Ele preenche título/descrição/imagem/tipo e adiciona gêneros automaticamente.</div>
+          </div>
+
+          <div class="nx-divider"></div>
+
           <form class="nx-form" method="POST">
             <div class="nx-field">
               <label>Título</label>
-              <input class="nx-input" name="title" placeholder="Ex: Gente Grande" required>
+              <input id="fTitle" class="nx-input" name="title" placeholder="Ex: Gente Grande" required>
             </div>
 
             <div class="nx-field">
-              <label>Categoria principal</label>
-              <input class="nx-input" name="category" placeholder="Ex: Ação">
+              <label>Categoria principal (pode ser várias, por vírgula)</label>
+              <input id="fCategory" class="nx-input" name="category" placeholder="Ex: Ação, Comédia, Família">
+            </div>
+
+            <!-- ✅ chips de gêneros (atalho) -->
+            <div class="nx-field">
+              <label>Atalhos de gêneros (clique pra adicionar)</label>
+              <div id="genreChips" style="display:flex; gap:8px; flex-wrap:wrap;">
+                {% set chips = [
+                  "Ação","Aventura","Animação","Anime","Comédia","Comédia Romântica","Drama","Terror","Suspense","Thriller",
+                  "Ficção científica","Fantasia","Romance","Família","Kids","Infantil","Documentários","Policial","Crime",
+                  "Mistério","Guerra","História","Biografia","Reality","Música e musicais","Esportes","Independentes","LGBTQIA+"
+                ] %}
+                {% for g in chips %}
+                  <button type="button" class="nx-pill" onclick="addGenreToCategory('{{ g }}')">{{ g }}</button>
+                {% endfor %}
+              </div>
+              <div class="nx-help">Isso só ajuda a preencher o campo “Categoria principal”.</div>
             </div>
 
             <div class="nx-field">
               <label>Descrição</label>
-              <textarea class="nx-textarea" name="description" placeholder="Descrição curta (aparece no card)"></textarea>
+              <textarea id="fDesc" class="nx-textarea" name="description" placeholder="Descrição curta (aparece no card)"></textarea>
             </div>
 
             <div class="nx-field">
               <label>Imagem (URL)</label>
-              <input class="nx-input" name="image" placeholder="https://..." required>
+              <input id="fImage" class="nx-input" name="image" placeholder="https://..." required>
             </div>
 
             <div class="nx-field">
               <label>TMDb/IMDb ID</label>
-              <input class="nx-input" name="tmdb_id" placeholder="Ex: 550 ou tt0137523">
+              <input id="fTmdbId" class="nx-input" name="tmdb_id" placeholder="Ex: 550 ou tt0137523">
+              <div class="nx-help">No seu player externo você usa esse ID pra rodar.</div>
             </div>
 
             <div class="nx-field">
               <label>Tipo</label>
-              <select class="nx-select" name="content_type">
+              <select id="fType" class="nx-select" name="content_type">
                 <option>Filme</option>
                 <option>Serie</option>
                 <option>Em Breve</option>
@@ -51,13 +80,14 @@
 
             <div class="nx-field">
               <label>Duração (segundos)</label>
-              <input class="nx-input" name="duration_seconds" type="number" min="0" placeholder="Ex: 5400">
+              <input id="fDur" class="nx-input" name="duration_seconds" type="number" min="0" placeholder="Ex: 5400">
               <div class="nx-help">Use para a barrinha do “Continuar assistindo”.</div>
             </div>
 
             <div class="nx-field">
               <label>Categorias extras</label>
-              <input class="nx-input" name="extra_categories" placeholder="Ex: Infantil, Comédia, Terror">
+              <input id="fExtra" class="nx-input" name="extra_categories" placeholder="Ex: Infantil, Comédia, Terror">
+              <div class="nx-help">Dica: aqui você pode colocar “Kids, Desenhos, Anime…”</div>
             </div>
 
             <label style="display:flex; gap:10px; align-items:center;">
@@ -129,5 +159,111 @@
     </div>
   </div>
 </div>
+
+<script>
+  // ✅ adiciona gênero no campo category (vírgula)
+  function addGenreToCategory(genre){
+    const input = document.getElementById('fCategory');
+    if(!input) return;
+
+    const current = (input.value || '').trim();
+    if(!current){
+      input.value = genre;
+      return;
+    }
+
+    const parts = current.split(',').map(s => s.trim()).filter(Boolean);
+    const lower = parts.map(p => p.toLowerCase());
+    if(!lower.includes(genre.toLowerCase())){
+      parts.push(genre);
+    }
+    input.value = parts.join(', ');
+  }
+
+  // ✅ IMPORT TMDB: chama endpoint /api/tmdb/import e preenche o form
+  (function(){
+    const btn = document.getElementById('tmdbImportBtn');
+    const inp = document.getElementById('tmdbImportInput');
+
+    if(!btn || !inp) return;
+
+    function parseTmdb(input){
+      const v = (input || '').trim();
+      if(!v) return null;
+
+      // se for número puro
+      if(/^\d+$/.test(v)){
+        return { type: null, id: v };
+      }
+
+      // links: /movie/123 ou /tv/123
+      const m1 = v.match(/\/movie\/(\d+)/i);
+      if(m1) return { type: 'movie', id: m1[1] };
+
+      const m2 = v.match(/\/tv\/(\d+)/i);
+      if(m2) return { type: 'tv', id: m2[1] };
+
+      // fallback: procura um número no final
+      const m3 = v.match(/(\d+)(?:\D*)$/);
+      if(m3) return { type: null, id: m3[1] };
+
+      return null;
+    }
+
+    async function doImport(){
+      const parsed = parseTmdb(inp.value);
+      if(!parsed){
+        alert("Cole um link do TMDB ou um ID numérico.");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Importando...";
+
+      try{
+        const url = `/api/tmdb/import?id=${encodeURIComponent(parsed.id)}${parsed.type ? `&type=${encodeURIComponent(parsed.type)}` : ''}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if(!data || !data.ok){
+          alert(data && data.error ? data.error : "Falha ao importar do TMDB.");
+          return;
+        }
+
+        // preenche form
+        document.getElementById('fTitle').value = data.title || '';
+        document.getElementById('fDesc').value = data.description || '';
+        document.getElementById('fImage').value = data.image || '';
+        document.getElementById('fTmdbId').value = String(data.tmdb_id || parsed.id || '');
+        document.getElementById('fType').value = data.content_type || 'Filme';
+
+        // adiciona gêneros no campo category
+        if(data.genres && data.genres.length){
+          const input = document.getElementById('fCategory');
+          const current = (input.value || '').trim();
+          const base = current ? current.split(',').map(s => s.trim()).filter(Boolean) : [];
+          const lower = base.map(x => x.toLowerCase());
+
+          data.genres.forEach(g => {
+            if(g && !lower.includes(g.toLowerCase())){
+              base.push(g);
+              lower.push(g.toLowerCase());
+            }
+          });
+
+          input.value = base.join(', ');
+        }
+
+      }catch(e){
+        alert("Erro ao importar do TMDB. Veja se você colocou a TMDB_API_KEY no Render.");
+      }finally{
+        btn.disabled = false;
+        btn.textContent = "Importar";
+      }
+    }
+
+    btn.addEventListener('click', doImport);
+  })();
+</script>
 
 {% endblock %}

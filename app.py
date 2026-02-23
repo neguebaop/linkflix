@@ -15,9 +15,11 @@ import os
 import uuid
 from datetime import datetime, timedelta
 
+# ✅ .env
 from dotenv import load_dotenv
 load_dotenv()
 
+# ✅ requests (MisticPay + TMDB)
 import requests
 
 
@@ -26,12 +28,16 @@ import requests
 # =========================================================
 
 app = Flask(__name__)
+
+# ✅ SECRET KEY (Render usa FLASK_SECRET_KEY)
 app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "linkflixsecret")
 
+# ✅ Segurança básica em produção (Render)
 if os.getenv("RENDER"):
     app.config["SESSION_COOKIE_SECURE"] = True
     app.config["REMEMBER_COOKIE_SECURE"] = True
 
+# ✅ DATABASE (SQLite local / Postgres no Render)
 db_url = os.getenv("DATABASE_URL", "sqlite:///linkflix.db")
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -39,11 +45,14 @@ if db_url.startswith("postgres://"):
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# ✅ UPLOAD CONFIG (avatar)
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads", "avatars")
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5MB
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
-
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+# ✅ TMDB API KEY (adicione no Render: TMDB_API_KEY)
+TMDB_API_KEY = os.getenv("TMDB_API_KEY", "")
 
 db = SQLAlchemy(app)
 
@@ -89,6 +98,25 @@ GOLD_PRICE = 25.00
 
 
 # =========================================================
+# ================= HELPERS (sessão/perfil) =================
+# =========================================================
+
+def get_active_profile():
+    if not current_user.is_authenticated:
+        return None
+
+    pid = session.get("active_profile")
+    if not pid:
+        return None
+
+    ap = Profile.query.get(pid)
+    if (not ap) or (ap.user_id != current_user.id):
+        session.pop("active_profile", None)
+        return None
+    return ap
+
+
+# =========================================================
 # ======================= DECORATORS =======================
 # =========================================================
 
@@ -99,19 +127,6 @@ def admin_required(f):
             return redirect(url_for("index"))
         return f(*args, **kwargs)
     return decorated_function
-
-
-def get_active_profile():
-    if not current_user.is_authenticated:
-        return None
-    pid = session.get("active_profile")
-    if not pid:
-        return None
-    ap = Profile.query.get(pid)
-    if (not ap) or (ap.user_id != current_user.id):
-        session.pop("active_profile", None)
-        return None
-    return ap
 
 
 def require_active_profile(f):
@@ -151,6 +166,7 @@ class User(UserMixin, db.Model):
         return False
 
 
+# ✅ N:N categorias extras
 content_categories = db.Table(
     "content_categories",
     db.Column("content_id", db.Integer, db.ForeignKey("content.id"), primary_key=True),
@@ -166,7 +182,7 @@ class Category(db.Model):
 class Content(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200))
-    category = db.Column(db.String(200))  # pode ser "Ação, Comédia, Família"
+    category = db.Column(db.String(100))  # pode ter várias por vírgula
     description = db.Column(db.String(500))
     image = db.Column(db.String(300))
     tmdb_id = db.Column(db.String(50))
@@ -479,8 +495,10 @@ def progress_update(content_id):
     pos = int(float(data.get("position", 0) or 0))
     dur = int(float(data.get("duration", 0) or 0))
 
-    pos = max(0, pos)
-    dur = max(0, dur)
+    if pos < 0:
+        pos = 0
+    if dur < 0:
+        dur = 0
 
     if dur == 0:
         c = Content.query.get(content_id)
@@ -502,6 +520,68 @@ def progress_update(content_id):
     return jsonify({"ok": True})
 
 
+# ✅ compatibilidade /api/progress/*
+@app.route("/api/progress/update", methods=["POST"])
+@login_required
+@require_active_profile
+def api_progress_update():
+    profile_id = session["active_profile"]
+    data = request.get_json(silent=True) or {}
+
+    content_id = int(data.get("content_id") or 0)
+    pct = data.get("progress_percent", 0)
+
+    try:
+        pct = int(float(pct or 0))
+    except Exception:
+        pct = 0
+
+    pct = max(0, min(100, pct))
+    content = Content.query.get_or_404(content_id)
+
+    dur = int(content.duration_seconds or 0)
+    if dur <= 0:
+        dur = 3600
+
+    pos = int(dur * (pct / 100.0))
+    pos = max(0, min(dur, pos))
+
+    wp = WatchProgress.query.filter_by(profile_id=profile_id, content_id=content_id).first()
+    if not wp:
+        wp = WatchProgress(profile_id=profile_id, content_id=content_id)
+
+    wp.position_seconds = pos
+    wp.duration_seconds = dur
+
+    db.session.add(wp)
+    db.session.commit()
+
+    return jsonify({"ok": True, "content_id": content_id, "progress_percent": pct})
+
+
+@app.route("/api/progress/get/<int:content_id>", methods=["GET"])
+@login_required
+@require_active_profile
+def api_progress_get(content_id):
+    profile_id = session["active_profile"]
+    content = Content.query.get_or_404(content_id)
+
+    wp = WatchProgress.query.filter_by(profile_id=profile_id, content_id=content_id).first()
+
+    dur = int((wp.duration_seconds if (wp and wp.duration_seconds) else (content.duration_seconds or 0)) or 0)
+    pos = int((wp.position_seconds if wp else 0) or 0)
+
+    if dur <= 0:
+        dur = 3600
+
+    pct = 0
+    if dur > 0 and pos > 0:
+        pct = int((pos / dur) * 100)
+        pct = max(0, min(100, pct))
+
+    return jsonify({"content_id": content_id, "progress_percent": pct})
+
+
 # =========================================================
 # ============================ HOME =========================
 # =========================================================
@@ -510,24 +590,24 @@ def progress_update(content_id):
 @login_required
 @require_active_profile
 def home():
-    search = (request.args.get("search") or "").strip()
-    category = (request.args.get("category") or "").strip()
-    content_type = (request.args.get("content_type") or "").strip()
+    search = request.args.get("search", "")
+    category = request.args.get("category", "")
+    content_type = request.args.get("content_type", "")
 
     query = Content.query
 
     if search:
-        st = f"%{search}%"
+        search_term = f"%{search}%"
         query = query.filter(
-            (Content.title.ilike(st)) |
-            (Content.category.ilike(st))
+            (Content.title.ilike(search_term)) |
+            (Content.category.ilike(search_term))
         )
 
     if category:
-        query = query.filter(Content.category.ilike(f"%{category}%"))
+        query = query.filter(Content.category.ilike(category))
 
     if content_type:
-        query = query.filter(Content.content_type.ilike(f"%{content_type}%"))
+        query = query.filter(Content.content_type.ilike(content_type))
 
     contents = query.all()
     featured_content = choice(contents) if contents else None
@@ -541,6 +621,7 @@ def home():
     favs = Favorite.query.filter_by(profile_id=profile_id).all() if profile_id else []
     favorite_ids = {f.content_id for f in favs}
 
+    # ✅ CONTINUAR ASSISTINDO REAL
     progress_map = {}
     continuar_real = []
 
@@ -556,7 +637,6 @@ def home():
     for p in progress_rows:
         if not p.duration_seconds or not p.position_seconds:
             continue
-
         if p.position_seconds >= max(p.duration_seconds - 60, 1):
             continue
 
@@ -589,89 +669,66 @@ def home():
 # =================== BROWSE: FILMES/SÉRIES =================
 # =========================================================
 
-# ✅ Lista grande (Netflix-like + os seus)
 DEFAULT_GENRES = [
-    # os que você mostrou
-    "Ação", "Anime", "Brasileiros", "Clássicos", "Comédia stand-up", "Comédias",
-    "Como me sinto hoje?", "Curtas", "Documentários", "Drama", "Esportes",
-    "Estrangeiros", "Fantasia", "Fé e espiritualidade", "Ficção científica",
-    "Hollywood", "Independentes", "LGBTQIA+", "Música e musicais",
-    "Netflix no Oscar® 2026", "Para toda a família", "Policial",
-    "Premiados", "Romance", "Sua playlist do zodíaco", "Suspense", "Terror",
-
-    # extras bem comuns
-    "Animação", "Desenhos", "Infantil", "Kids", "Família",
-    "Aventura", "Comédia Romântica", "Ação e Aventura", "Mistério",
-    "Crime", "Guerra", "História", "Biografia", "Baseado em fatos reais",
-    "Super-heróis", "Marvel", "DC", "Doramas", "K-Drama",
-    "Reality", "Reality Show", "Talk show", "Stand-up",
-    "Música", "Musical", "Shows", "Concertos",
-    "Terror psicológico", "Sobrenatural", "Slasher",
-    "Thriller", "Suspense psicológico",
-    "Ficção científica e fantasia", "Cyberpunk",
-    "Esportes e competição", "Culinária", "Viagem", "Natureza",
-    "Tecnologia", "Games", "Jogos",
-    "Teen", "Adolescentes", "Escola",
-    "Adulto", "18+", "Erótico (leve)",
-    "Asia", "Japonês", "Coreano", "Chinês", "Indiano", "Europeu",
-    "Latino", "Mexicano", "Argentino",
+    "Ação",
+    "Anime",
+    "Brasileiros",
+    "Clássicos",
+    "Comédia stand-up",
+    "Comédias",
+    "Como me sinto hoje?",
+    "Curtas",
+    "Documentários",
+    "Drama",
+    "Esportes",
+    "Estrangeiros",
+    "Fantasia",
+    "Fé e espiritualidade",
+    "Ficção científica",
+    "Hollywood",
+    "Independentes",
+    "LGBTQIA+",
+    "Música e musicais",
+    "Netflix no Oscar® 2026",
+    "Para toda a família",
+    "Policial",
+    "Premiados",
+    "Romance",
+    "Sua playlist do zodíaco",
+    "Suspense",
+    "Terror",
 ]
 
-def normalize_genre_text(s: str) -> str:
-    if not s:
-        return ""
-    return " ".join((s or "").strip().split())
-
-def extract_genres_from_content(content: Content):
-    """
-    Pega gêneros do conteúdo:
-    - category string pode ser "Ação, Comédia, Família"
-    - extra_categories (N:N)
-    """
-    found = set()
-
-    # category principal (string)
-    if content.category:
-        raw = content.category.strip()
-        if raw:
-            # quebra por vírgula
-            parts = [p.strip() for p in raw.split(",")]
-            for p in parts:
-                p = normalize_genre_text(p)
-                if p:
-                    found.add(p)
-
-    # extras (N:N)
-    for ec in (content.extra_categories or []):
-        if ec and ec.name:
-            g = normalize_genre_text(ec.name)
-            if g:
-                found.add(g)
-
-    return found
-
 def get_all_genres_for_type(content_type: str):
-    """
-    Dropdown igual Netflix:
-    - sempre mostra DEFAULT_GENRES
-    - adiciona tudo que existir no banco (category e extra_categories)
-    """
-    genres = set(normalize_genre_text(g) for g in DEFAULT_GENRES if g)
+    genres = set(DEFAULT_GENRES)
 
     rows = (
+        Content.query
+        .filter(Content.content_type == content_type)
+        .with_entities(Content.category)
+        .all()
+    )
+    for (cat,) in rows:
+        if cat:
+            c = cat.strip()
+            if c:
+                genres.add(c)
+
+    rows2 = (
         Content.query
         .filter(Content.content_type == content_type)
         .options(db.joinedload(Content.extra_categories))
         .all()
     )
-
-    for c in rows:
-        for g in extract_genres_from_content(c):
-            genres.add(g)
+    for c in rows2:
+        for ec in (c.extra_categories or []):
+            if ec and ec.name:
+                genres.add(ec.name.strip())
 
     genres = [g for g in genres if g]
     genres.sort(key=lambda x: x.lower())
     return genres
+
 
 def apply_common_filters(query, content_type: str):
     search = (request.args.get("search") or "").strip()
@@ -687,13 +744,13 @@ def apply_common_filters(query, content_type: str):
         )
 
     if genre:
-        g = genre.strip()
         query = query.filter(
-            (Content.category.ilike(f"%{g}%")) |
-            (Content.extra_categories.any(Category.name.ilike(f"%{g}%")))
+            (Content.category.ilike(f"%{genre}%")) |
+            (Content.extra_categories.any(Category.name.ilike(f"%{genre}%")))
         )
 
     return query, search, genre
+
 
 def build_favorites_and_progress(profile_id: int):
     favs = Favorite.query.filter_by(profile_id=profile_id).all() if profile_id else []
@@ -797,6 +854,70 @@ def embreve_page():
 
 
 # =========================================================
+# ===================== TMDB IMPORT (ADMIN) =================
+# =========================================================
+
+@app.route("/api/tmdb/import", methods=["GET"])
+@login_required
+@admin_required
+def tmdb_import():
+    """
+    GET /api/tmdb/import?id=224372&type=tv
+    type pode ser: tv ou movie
+    se type não vier, tentamos primeiro movie depois tv
+    """
+    tmdb_id = (request.args.get("id") or "").strip()
+    forced_type = (request.args.get("type") or "").strip().lower()
+
+    if not TMDB_API_KEY:
+        return jsonify({"ok": False, "error": "TMDB_API_KEY não configurada no servidor."}), 400
+
+    if not tmdb_id or not tmdb_id.isdigit():
+        return jsonify({"ok": False, "error": "ID inválido."}), 400
+
+    def fetch(kind: str):
+        url = f"https://api.themoviedb.org/3/{kind}/{tmdb_id}"
+        params = {"api_key": TMDB_API_KEY, "language": "pt-BR"}
+        r = requests.get(url, params=params, timeout=20)
+        if r.status_code != 200:
+            return None
+        return r.json()
+
+    data = None
+    kind = None
+
+    if forced_type in ("movie", "tv"):
+        kind = forced_type
+        data = fetch(kind)
+    else:
+        data = fetch("movie")
+        kind = "movie" if data else None
+        if not data:
+            data = fetch("tv")
+            kind = "tv" if data else None
+
+    if not data:
+        return jsonify({"ok": False, "error": "Não encontrei no TMDB com esse ID."}), 404
+
+    title = data.get("title") or data.get("name") or ""
+    overview = data.get("overview") or ""
+    poster = data.get("poster_path") or ""
+    genres = [g.get("name") for g in (data.get("genres") or []) if g.get("name")]
+    image_url = f"https://image.tmdb.org/t/p/w780{poster}" if poster else ""
+    content_type = "Filme" if kind == "movie" else "Serie"
+
+    return jsonify({
+        "ok": True,
+        "tmdb_id": int(tmdb_id),
+        "title": title,
+        "description": overview,
+        "image": image_url,
+        "content_type": content_type,
+        "genres": genres,
+    })
+
+
+# =========================================================
 # ============================ WATCH ========================
 # =========================================================
 
@@ -862,11 +983,19 @@ def toggle_favorite(content_id):
 @app.route("/plans")
 @login_required
 def plans():
-    return render_template("plans.html", premium_price=PREMIUM_PRICE, gold_price=GOLD_PRICE)
+    return render_template(
+        "plans.html",
+        premium_price=PREMIUM_PRICE,
+        gold_price=GOLD_PRICE
+    )
 
 
 def misticpay_headers():
-    return {"ci": MISTICPAY_CI, "cs": MISTICPAY_CS, "Content-Type": "application/json"}
+    return {
+        "ci": MISTICPAY_CI,
+        "cs": MISTICPAY_CS,
+        "Content-Type": "application/json"
+    }
 
 
 def create_pix_transaction(amount: float, payer_name: str, payer_document: str, external_id: str, description: str):
@@ -998,7 +1127,7 @@ def misticpay_webhook():
 @login_required
 def admin():
     main_account = (current_user.username == "zanagabriela26@gmail.com")
-    allowed = main_account or session.get("is_admin") or session.get("admin_liberado")
+    allowed = main_account or session.get("is_admin") or session.get("admin_liberado") or getattr(current_user, "is_admin", False)
 
     if request.method == "POST":
         if request.form.get("title"):
