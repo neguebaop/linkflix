@@ -22,6 +22,80 @@ load_dotenv()
 # ✅ requests (MisticPay + TMDB)
 import requests
 
+# =========================================================
+# ====================== TMDB CONFIG =======================
+# =========================================================
+TMDB_API_KEY = os.getenv("TMDB_API_KEY", "").strip()
+TMDB_BASE_URL = "https://api.themoviedb.org/3"
+TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w780"
+
+
+def tmdb_get(path: str, params: dict | None = None):
+    """Chama TMDb API v3."""
+    if not TMDB_API_KEY:
+        raise RuntimeError("TMDB_API_KEY não configurada.")
+    params = params or {}
+    params["api_key"] = TMDB_API_KEY
+    params.setdefault("language", "pt-BR")
+    url = f"{TMDB_BASE_URL}{path}"
+    r = requests.get(url, params=params, timeout=20)
+    r.raise_for_status()
+    return r.json()
+
+
+def normalize_tmdb_id(raw: str) -> str:
+    """
+    Aceita:
+    - "550"
+    - "https://www.themoviedb.org/movie/550-fight-club"
+    - "https://www.themoviedb.org/tv/1396-breaking-bad"
+    Retorna só o número como string.
+    """
+    if not raw:
+        return ""
+    raw = raw.strip()
+    # pega o primeiro número grande que aparecer
+    import re
+    m = re.search(r"/(movie|tv)/(\d+)", raw)
+    if m:
+        return m.group(2)
+    m2 = re.search(r"(\d+)", raw)
+    return m2.group(1) if m2 else raw
+
+
+def tmdb_lookup_item(item_type: str, tmdb_id: str):
+    """
+    item_type: "movie" ou "tv"
+    Retorna dict pronto pro seu admin preencher.
+    """
+    tmdb_id = normalize_tmdb_id(tmdb_id)
+    if item_type not in ("movie", "tv"):
+        raise ValueError("type inválido")
+
+    data = tmdb_get(f"/{item_type}/{tmdb_id}", params={"append_to_response": "genres"})
+
+    title = data.get("title") if item_type == "movie" else data.get("name")
+    overview = data.get("overview") or ""
+    poster = data.get("poster_path") or ""
+    backdrop = data.get("backdrop_path") or ""
+    # preferir backdrop, se não tiver usar poster
+    image = (TMDB_IMG_BASE + backdrop) if backdrop else ((TMDB_IMG_BASE + poster) if poster else "")
+
+    # gêneros
+    genres = [g.get("name") for g in (data.get("genres") or []) if g.get("name")]
+    main_category = genres[0] if genres else ""
+    extra_categories = genres[1:] if len(genres) > 1 else []
+
+    return {
+        "tmdb_id": tmdb_id,
+        "content_type": "Filme" if item_type == "movie" else "Serie",
+        "title": title or "",
+        "description": overview[:480],  # pra caber no seu limite
+        "image": image,
+        "category": main_category,
+        "extra_categories": extra_categories,
+    }
+
 
 # =========================================================
 # ======================= APP CONFIG =======================
@@ -1251,7 +1325,26 @@ def verify_admin():
         return redirect(url_for("admin"))
     return redirect(url_for("home"))
 
+@app.route("/admin/tmdb/lookup")
+@login_required
+def admin_tmdb_lookup():
+    # mesma regra do seu /admin
+    main_account = (current_user.username == "zanagabriela26@gmail.com")
+    allowed = main_account or session.get("is_admin") or session.get("admin_liberado")
+    if not allowed:
+        return jsonify({"ok": False, "error": "Sem permissão"}), 403
 
+    item_type = (request.args.get("type") or "").strip().lower()  # movie | tv
+    tmdb_id = (request.args.get("id") or "").strip()
+
+    if not item_type or not tmdb_id:
+        return jsonify({"ok": False, "error": "Parâmetros faltando"}), 400
+
+    try:
+        info = tmdb_lookup_item(item_type, tmdb_id)
+        return jsonify({"ok": True, "data": info})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
 # =========================================================
 # ====================== HELP / FEEDBACK ====================
 # =========================================================
