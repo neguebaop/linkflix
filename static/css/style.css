@@ -1147,3 +1147,123 @@ a:hover{ color: #fff; }
     white-space: normal; /* deixa quebrar linha se precisar */
   }
 }
+
+/* =========================
+   SEARCH (clicável + z-index)
+========================= */
+.navbar { position: sticky; top: 0; z-index: 9990; }
+
+.search-wrap { position: relative; z-index: 9995; }
+
+.search-form {
+  position: relative;
+  z-index: 9996;
+  pointer-events: auto;
+}
+
+.search-form input {
+  pointer-events: auto;
+  z-index: 9997;
+}
+
+/* no mobile: por padrão mostra só a lupa e abre o input ao clicar */
+.search-toggle { display: none; }
+
+/* =========================
+   MOBILE SEARCH OPEN
+========================= */
+@media (max-width: 768px) {
+  .search-toggle { display: inline-flex; align-items:center; justify-content:center; }
+  .search-form { display: none; }
+
+  .navbar.search-open .search-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    z-index: 10050;
+    background: rgba(0,0,0,.92);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+
+  .navbar.search-open .search-form input{
+    width: 100%;
+    background: transparent;
+    color: #fff;
+    border: 0;
+    outline: none;
+  }
+
+  .navbar.search-open .search-close{
+    background: transparent;
+    border: 0;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+  }
+}
+
+/* =========================
+   GENRE DROPDOWN (Netflix-like)
+========================= */
+.genre-dropdown { position: relative; z-index: 10020; }
+
+.genre-menu{
+  display: none;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 10px);
+  width: min(720px, 92vw);
+  max-height: 70vh;
+  overflow: auto;
+  background: rgba(0,0,0,.92);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 10px;
+  padding: 12px;
+  z-index: 10030;
+}
+
+/* abre */
+.genre-menu.open{ display: grid; }
+
+/* PC: colunas */
+@media (min-width: 769px){
+  .genre-menu.open{
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px 14px;
+  }
+}
+
+/* MOBILE: 2 colunas + tela inteira pra caber tudo */
+@media (max-width: 768px){
+  .genre-menu{
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    top: 70px; /* abaixo da navbar */
+    width: auto;
+    max-height: calc(100vh - 90px);
+  }
+  .genre-menu.open{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 10px;
+  }
+}
+
+.genre-menu a{
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: rgba(255,255,255,.88);
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.genre-menu a:hover{ background: rgba(255,255,255,.08); }
+.genre-menu a.active{ background: rgba(229,9,20,.22); border: 1px solid rgba(229,9,20,.35); }

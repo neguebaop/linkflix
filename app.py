@@ -15,11 +15,9 @@ import os
 import uuid
 from datetime import datetime, timedelta
 
-# ✅ .env
 from dotenv import load_dotenv
 load_dotenv()
 
-# ✅ requests (para chamar MisticPay)
 import requests
 
 
@@ -28,16 +26,12 @@ import requests
 # =========================================================
 
 app = Flask(__name__)
-
-# ✅ SECRET KEY (Render usa FLASK_SECRET_KEY)
 app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "linkflixsecret")
 
-# ✅ Segurança básica em produção (Render)
 if os.getenv("RENDER"):
     app.config["SESSION_COOKIE_SECURE"] = True
     app.config["REMEMBER_COOKIE_SECURE"] = True
 
-# ✅ DATABASE (SQLite local / Postgres no Render)
 db_url = os.getenv("DATABASE_URL", "sqlite:///linkflix.db")
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -45,7 +39,6 @@ if db_url.startswith("postgres://"):
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# ✅ UPLOAD CONFIG (avatar)
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads", "avatars")
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5MB
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
@@ -96,25 +89,6 @@ GOLD_PRICE = 25.00
 
 
 # =========================================================
-# ================= HELPERS (sessão/perfil) =================
-# =========================================================
-
-def get_active_profile():
-    if not current_user.is_authenticated:
-        return None
-
-    pid = session.get("active_profile")
-    if not pid:
-        return None
-
-    ap = Profile.query.get(pid)
-    if (not ap) or (ap.user_id != current_user.id):
-        session.pop("active_profile", None)
-        return None
-    return ap
-
-
-# =========================================================
 # ======================= DECORATORS =======================
 # =========================================================
 
@@ -125,6 +99,19 @@ def admin_required(f):
             return redirect(url_for("index"))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def get_active_profile():
+    if not current_user.is_authenticated:
+        return None
+    pid = session.get("active_profile")
+    if not pid:
+        return None
+    ap = Profile.query.get(pid)
+    if (not ap) or (ap.user_id != current_user.id):
+        session.pop("active_profile", None)
+        return None
+    return ap
 
 
 def require_active_profile(f):
@@ -179,7 +166,7 @@ class Category(db.Model):
 class Content(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200))
-    category = db.Column(db.String(100))
+    category = db.Column(db.String(200))  # pode ser "Ação, Comédia, Família"
     description = db.Column(db.String(500))
     image = db.Column(db.String(300))
     tmdb_id = db.Column(db.String(50))
@@ -478,6 +465,44 @@ def delete_profile(profile_id):
 
 
 # =========================================================
+# ============== CONTINUAR ASSISTINDO (API) =================
+# =========================================================
+
+@app.route("/progress/update/<int:content_id>", methods=["POST"])
+@login_required
+@require_active_profile
+def progress_update(content_id):
+    profile_id = session["active_profile"]
+    Content.query.get_or_404(content_id)
+
+    data = request.get_json(silent=True) or {}
+    pos = int(float(data.get("position", 0) or 0))
+    dur = int(float(data.get("duration", 0) or 0))
+
+    pos = max(0, pos)
+    dur = max(0, dur)
+
+    if dur == 0:
+        c = Content.query.get(content_id)
+        dur = int(c.duration_seconds or 0)
+
+    if dur > 0 and pos > dur:
+        pos = dur
+
+    wp = WatchProgress.query.filter_by(profile_id=profile_id, content_id=content_id).first()
+    if not wp:
+        wp = WatchProgress(profile_id=profile_id, content_id=content_id)
+
+    wp.position_seconds = pos
+    wp.duration_seconds = dur
+
+    db.session.add(wp)
+    db.session.commit()
+
+    return jsonify({"ok": True})
+
+
+# =========================================================
 # ============================ HOME =========================
 # =========================================================
 
@@ -485,24 +510,24 @@ def delete_profile(profile_id):
 @login_required
 @require_active_profile
 def home():
-    search = request.args.get("search", "")
-    category = request.args.get("category", "")
-    content_type = request.args.get("content_type", "")
+    search = (request.args.get("search") or "").strip()
+    category = (request.args.get("category") or "").strip()
+    content_type = (request.args.get("content_type") or "").strip()
 
     query = Content.query
 
     if search:
-        search_term = f"%{search}%"
+        st = f"%{search}%"
         query = query.filter(
-            (Content.title.ilike(search_term)) |
-            (Content.category.ilike(search_term))
+            (Content.title.ilike(st)) |
+            (Content.category.ilike(st))
         )
 
     if category:
-        query = query.filter(Content.category.ilike(category))
+        query = query.filter(Content.category.ilike(f"%{category}%"))
 
     if content_type:
-        query = query.filter(Content.content_type.ilike(content_type))
+        query = query.filter(Content.content_type.ilike(f"%{content_type}%"))
 
     contents = query.all()
     featured_content = choice(contents) if contents else None
@@ -564,74 +589,89 @@ def home():
 # =================== BROWSE: FILMES/SÉRIES =================
 # =========================================================
 
-# ✅ GÊNEROS FIXOS IGUAL A NETFLIX (os que você mostrou)
+# ✅ Lista grande (Netflix-like + os seus)
 DEFAULT_GENRES = [
-    "Ação",
-    "Anime",
-    "Brasileiros",
-    "Clássicos",
-    "Comédia stand-up",
-    "Comédias",
-    "Como me sinto hoje?",
-    "Curtas",
-    "Documentários",
-    "Drama",
-    "Esportes",
-    "Estrangeiros",
-    "Fantasia",
-    "Fé e espiritualidade",
-    "Ficção científica",
-    "Hollywood",
-    "Independentes",
-    "LGBTQIA+",
-    "Música e musicais",
-    "Netflix no Oscar® 2026",
-    "Para toda a família",
-    "Policial",
-    "Premiados",
-    "Romance",
-    "Sua playlist do zodíaco",
-    "Suspense",
-    "Terror",
+    # os que você mostrou
+    "Ação", "Anime", "Brasileiros", "Clássicos", "Comédia stand-up", "Comédias",
+    "Como me sinto hoje?", "Curtas", "Documentários", "Drama", "Esportes",
+    "Estrangeiros", "Fantasia", "Fé e espiritualidade", "Ficção científica",
+    "Hollywood", "Independentes", "LGBTQIA+", "Música e musicais",
+    "Netflix no Oscar® 2026", "Para toda a família", "Policial",
+    "Premiados", "Romance", "Sua playlist do zodíaco", "Suspense", "Terror",
+
+    # extras bem comuns
+    "Animação", "Desenhos", "Infantil", "Kids", "Família",
+    "Aventura", "Comédia Romântica", "Ação e Aventura", "Mistério",
+    "Crime", "Guerra", "História", "Biografia", "Baseado em fatos reais",
+    "Super-heróis", "Marvel", "DC", "Doramas", "K-Drama",
+    "Reality", "Reality Show", "Talk show", "Stand-up",
+    "Música", "Musical", "Shows", "Concertos",
+    "Terror psicológico", "Sobrenatural", "Slasher",
+    "Thriller", "Suspense psicológico",
+    "Ficção científica e fantasia", "Cyberpunk",
+    "Esportes e competição", "Culinária", "Viagem", "Natureza",
+    "Tecnologia", "Games", "Jogos",
+    "Teen", "Adolescentes", "Escola",
+    "Adulto", "18+", "Erótico (leve)",
+    "Asia", "Japonês", "Coreano", "Chinês", "Indiano", "Europeu",
+    "Latino", "Mexicano", "Argentino",
 ]
+
+def normalize_genre_text(s: str) -> str:
+    if not s:
+        return ""
+    return " ".join((s or "").strip().split())
+
+def extract_genres_from_content(content: Content):
+    """
+    Pega gêneros do conteúdo:
+    - category string pode ser "Ação, Comédia, Família"
+    - extra_categories (N:N)
+    """
+    found = set()
+
+    # category principal (string)
+    if content.category:
+        raw = content.category.strip()
+        if raw:
+            # quebra por vírgula
+            parts = [p.strip() for p in raw.split(",")]
+            for p in parts:
+                p = normalize_genre_text(p)
+                if p:
+                    found.add(p)
+
+    # extras (N:N)
+    for ec in (content.extra_categories or []):
+        if ec and ec.name:
+            g = normalize_genre_text(ec.name)
+            if g:
+                found.add(g)
+
+    return found
 
 def get_all_genres_for_type(content_type: str):
     """
     Dropdown igual Netflix:
     - sempre mostra DEFAULT_GENRES
-    - e também adiciona tudo que existir no banco (category + extra_categories)
+    - adiciona tudo que existir no banco (category e extra_categories)
     """
-    genres = set(DEFAULT_GENRES)
+    genres = set(normalize_genre_text(g) for g in DEFAULT_GENRES if g)
 
-    # Categoria principal (string)
     rows = (
-        Content.query
-        .filter(Content.content_type == content_type)
-        .with_entities(Content.category)
-        .all()
-    )
-    for (cat,) in rows:
-        if cat:
-            c = cat.strip()
-            if c:
-                genres.add(c)
-
-    # Categorias extras (N:N)
-    rows2 = (
         Content.query
         .filter(Content.content_type == content_type)
         .options(db.joinedload(Content.extra_categories))
         .all()
     )
-    for c in rows2:
-        for ec in (c.extra_categories or []):
-            if ec and ec.name:
-                genres.add(ec.name.strip())
+
+    for c in rows:
+        for g in extract_genres_from_content(c):
+            genres.add(g)
 
     genres = [g for g in genres if g]
     genres.sort(key=lambda x: x.lower())
     return genres
-
 
 def apply_common_filters(query, content_type: str):
     search = (request.args.get("search") or "").strip()
@@ -647,13 +687,13 @@ def apply_common_filters(query, content_type: str):
         )
 
     if genre:
+        g = genre.strip()
         query = query.filter(
-            (Content.category.ilike(f"%{genre}%")) |
-            (Content.extra_categories.any(Category.name.ilike(f"%{genre}%")))
+            (Content.category.ilike(f"%{g}%")) |
+            (Content.extra_categories.any(Category.name.ilike(f"%{g}%")))
         )
 
     return query, search, genre
-
 
 def build_favorites_and_progress(profile_id: int):
     favs = Favorite.query.filter_by(profile_id=profile_id).all() if profile_id else []
@@ -822,19 +862,11 @@ def toggle_favorite(content_id):
 @app.route("/plans")
 @login_required
 def plans():
-    return render_template(
-        "plans.html",
-        premium_price=PREMIUM_PRICE,
-        gold_price=GOLD_PRICE
-    )
+    return render_template("plans.html", premium_price=PREMIUM_PRICE, gold_price=GOLD_PRICE)
 
 
 def misticpay_headers():
-    return {
-        "ci": MISTICPAY_CI,
-        "cs": MISTICPAY_CS,
-        "Content-Type": "application/json"
-    }
+    return {"ci": MISTICPAY_CI, "cs": MISTICPAY_CS, "Content-Type": "application/json"}
 
 
 def create_pix_transaction(amount: float, payer_name: str, payer_document: str, external_id: str, description: str):

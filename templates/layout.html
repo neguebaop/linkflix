@@ -24,14 +24,14 @@
 
   <div class="nav-right">
 
-    <!-- ✅ SEARCH WRAP (Netflix style no mobile) -->
+    <!-- ✅ SEARCH WRAP (Netflix-like no mobile) -->
     <div class="search-wrap">
-      <!-- botão lupa (aparece no mobile) -->
+      <!-- botão lupa (mobile) -->
       <button class="search-toggle" type="button" aria-label="Abrir pesquisa">
         <i class="fa fa-search"></i>
       </button>
 
-      <!-- form real (desktop sempre, mobile abre quando clicar na lupa) -->
+      <!-- form real -->
       <form method="GET" action="{{ url_for('home') }}" class="search-form" role="search">
         <i class="fa fa-search"></i>
         <input
@@ -88,8 +88,9 @@
     const toggle = document.querySelector('.search-toggle');
     const closeBtn = document.querySelector('.search-close');
     const input = document.querySelector('#navSearchInput');
+    const form = document.querySelector('.search-form');
 
-    if(!navbar || !toggle || !closeBtn || !input) return;
+    if(!navbar || !toggle || !closeBtn || !input || !form) return;
 
     function openSearch(){
       navbar.classList.add('search-open');
@@ -101,8 +102,13 @@
       input.blur();
     }
 
-    toggle.addEventListener('click', openSearch);
-    closeBtn.addEventListener('click', closeSearch);
+    toggle.addEventListener('click', (e) => { e.preventDefault(); openSearch(); });
+    closeBtn.addEventListener('click', (e) => { e.preventDefault(); closeSearch(); });
+
+    // ✅ se clicar no input e estiver no mobile, garante aberto
+    input.addEventListener('click', () => {
+      if (window.innerWidth <= 768) navbar.classList.add('search-open');
+    });
 
     document.addEventListener('keydown', (e) => {
       if(e.key === 'Escape') closeSearch();
