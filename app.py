@@ -14,6 +14,7 @@ from functools import wraps
 import os
 import uuid
 from datetime import datetime, timedelta
+import re
 
 # ✅ .env
 from dotenv import load_dotenv
@@ -30,7 +31,7 @@ TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w780"
 
 
-def tmdb_get(path: str, params=None):
+def tmdb_get(path: str, params: dict | None = None):
     """Chama TMDb API v3."""
     if not TMDB_API_KEY:
         raise RuntimeError("TMDB_API_KEY não configurada.")
@@ -54,8 +55,7 @@ def normalize_tmdb_id(raw: str) -> str:
     if not raw:
         return ""
     raw = raw.strip()
-    import re
-    m = re.search(r"/(movie|tv)/(\d+)", raw)
+    m = re.search(r"/(movie|tv)/(\d+)", raw, flags=re.I)
     if m:
         return m.group(2)
     m2 = re.search(r"(\d+)", raw)
@@ -78,8 +78,10 @@ def tmdb_lookup_item(item_type: str, tmdb_id: str):
     poster = data.get("poster_path") or ""
     backdrop = data.get("backdrop_path") or ""
 
+    # preferir backdrop, se não tiver usar poster
     image = (TMDB_IMG_BASE + backdrop) if backdrop else ((TMDB_IMG_BASE + poster) if poster else "")
 
+    # gêneros
     genres = [g.get("name") for g in (data.get("genres") or []) if g.get("name")]
     main_category = genres[0] if genres else ""
     extra_categories = genres[1:] if len(genres) > 1 else []
@@ -88,10 +90,11 @@ def tmdb_lookup_item(item_type: str, tmdb_id: str):
         "tmdb_id": tmdb_id,
         "content_type": "Filme" if item_type == "movie" else "Serie",
         "title": title or "",
-        "description": overview[:480],
+        "description": overview[:480],  # pra caber no limite
         "image": image,
         "category": main_category,
         "extra_categories": extra_categories,
+        "genres": genres,
     }
 
 
@@ -190,10 +193,24 @@ def get_active_profile():
 # =========================================================
 
 def admin_required(f):
+    """
+    ✅ Corrigido:
+    - Se for /api/* retorna JSON 403 ao invés de redirect (isso consertou seu Import TMDB).
+    - Se for página normal, mantém redirect.
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not (session.get("is_admin") or getattr(current_user, "is_admin", False)):
+        allowed = bool(
+            session.get("is_admin")
+            or session.get("admin_liberado")
+            or getattr(current_user, "is_admin", False)
+        )
+
+        if not allowed:
+            if request.path.startswith("/api/"):
+                return jsonify({"ok": False, "error": "Sem permissão (admin)."}), 403
             return redirect(url_for("index"))
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -235,6 +252,7 @@ class User(UserMixin, db.Model):
         return False
 
 
+# ✅ N:N categorias extras
 content_categories = db.Table(
     "content_categories",
     db.Column("content_id", db.Integer, db.ForeignKey("content.id"), primary_key=True),
@@ -563,10 +581,8 @@ def progress_update(content_id):
     pos = int(float(data.get("position", 0) or 0))
     dur = int(float(data.get("duration", 0) or 0))
 
-    if pos < 0:
-        pos = 0
-    if dur < 0:
-        dur = 0
+    pos = max(0, pos)
+    dur = max(0, dur)
 
     if dur == 0:
         c = Content.query.get(content_id)
@@ -688,6 +704,7 @@ def home():
     favs = Favorite.query.filter_by(profile_id=profile_id).all() if profile_id else []
     favorite_ids = {f.content_id for f in favs}
 
+    # ✅ CONTINUAR ASSISTINDO REAL
     progress_map = {}
     continuar_real = []
 
@@ -765,6 +782,12 @@ DEFAULT_GENRES = [
     "Terror",
 ]
 
+def _split_categories(cat_str: str):
+    if not cat_str:
+        return []
+    parts = [p.strip() for p in cat_str.split(",")]
+    return [p for p in parts if p]
+
 
 def get_all_genres_for_type(content_type: str):
     genres = set(DEFAULT_GENRES)
@@ -777,8 +800,7 @@ def get_all_genres_for_type(content_type: str):
     )
     for (cat,) in rows:
         if cat:
-            c = cat.strip()
-            if c:
+            for c in _split_categories(cat):
                 genres.add(c)
 
     rows2 = (
@@ -922,31 +944,18 @@ def embreve_page():
 
 # =========================================================
 # ===================== TMDB IMPORT (ADMIN) =================
+# ✅ Corrigido: existe SÓ 1 rota /api/tmdb/import (sem duplicar)
 # =========================================================
-# ✅ ÚNICA rota /api/tmdb/import (sem duplicar)
-# ✅ SEM redirect (sempre JSON) pra funcionar com fetch do admin
 
 @app.route("/api/tmdb/import", methods=["GET"])
 @login_required
+@admin_required
 def tmdb_import():
     """
-    GET /api/tmdb/import?id=550&type=movie
-    GET /api/tmdb/import?id=1399&type=tv
-    Se type não vier, tenta movie e depois tv.
-    Aceita também link do TMDB no parâmetro id.
+    GET /api/tmdb/import?id=224372&type=tv
+    type pode ser: tv ou movie
+    se type não vier, tentamos primeiro movie depois tv
     """
-
-    # mesma regra do /admin
-    main_account = (current_user.username == "zanagabriela26@gmail.com")
-    allowed = (
-        main_account
-        or session.get("is_admin")
-        or session.get("admin_liberado")
-        or getattr(current_user, "is_admin", False)
-    )
-    if not allowed:
-        return jsonify({"ok": False, "error": "Sem permissão"}), 403
-
     raw_id = (request.args.get("id") or "").strip()
     forced_type = (request.args.get("type") or "").strip().lower()
 
@@ -955,46 +964,76 @@ def tmdb_import():
 
     tmdb_id = normalize_tmdb_id(raw_id)
     if not tmdb_id or not tmdb_id.isdigit():
-        return jsonify({"ok": False, "error": "ID inválido. Cole um link do TMDB ou um número."}), 400
+        return jsonify({"ok": False, "error": "ID inválido."}), 400
 
-    try_types = []
-    if forced_type in ("movie", "tv"):
-        try_types = [forced_type]
-    else:
-        try_types = ["movie", "tv"]
+    kinds = [forced_type] if forced_type in ("movie", "tv") else ["movie", "tv"]
 
     last_err = None
-    for kind in try_types:
+    for k in kinds:
         try:
-            data = tmdb_get(f"/{kind}/{tmdb_id}")
-
-            title = data.get("title") if kind == "movie" else data.get("name")
-            overview = data.get("overview") or ""
-            poster = data.get("poster_path") or ""
-            backdrop = data.get("backdrop_path") or ""
-
-            path = backdrop or poster
-            image_url = f"{TMDB_IMG_BASE}{path}" if path else ""
-
-            genres = [g.get("name") for g in (data.get("genres") or []) if g.get("name")]
-
-            content_type = "Filme" if kind == "movie" else "Serie"
-
+            info = tmdb_lookup_item(k, tmdb_id)
+            # devolve no formato que seu admin.js já espera
             return jsonify({
                 "ok": True,
-                "tmdb_id": tmdb_id,
-                "title": title or "",
-                "description": overview,
-                "image": image_url,
-                "content_type": content_type,
-                "genres": genres,
+                "tmdb_id": info["tmdb_id"],
+                "title": info["title"],
+                "description": info["description"],
+                "image": info["image"],
+                "content_type": info["content_type"],
+                "genres": info.get("genres") or [],
             })
-
         except Exception as e:
             last_err = str(e)
-            continue
 
     return jsonify({"ok": False, "error": last_err or "Não encontrei no TMDB com esse ID."}), 404
+
+
+# =========================================================
+# ============ TMDB TV: TEMPORADAS / EPISÓDIOS ==============
+# (metadata) - pra você listar no watch e evitar “tela branca”
+# =========================================================
+
+@app.route("/api/tmdb/tv/<int:tv_id>/seasons", methods=["GET"])
+@login_required
+@require_active_profile
+def tmdb_tv_seasons(tv_id):
+    if not TMDB_API_KEY:
+        return jsonify({"ok": False, "error": "TMDB_API_KEY não configurada no servidor."}), 400
+
+    try:
+        data = tmdb_get(f"/tv/{tv_id}")
+        seasons = []
+        for s in (data.get("seasons") or []):
+            seasons.append({
+                "season_number": s.get("season_number"),
+                "name": s.get("name") or f"Temporada {s.get('season_number')}",
+                "episode_count": s.get("episode_count"),
+            })
+        return jsonify({"ok": True, "seasons": seasons})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/tmdb/tv/<int:tv_id>/season/<int:season_number>", methods=["GET"])
+@login_required
+@require_active_profile
+def tmdb_tv_season_episodes(tv_id, season_number):
+    if not TMDB_API_KEY:
+        return jsonify({"ok": False, "error": "TMDB_API_KEY não configurada no servidor."}), 400
+
+    try:
+        data = tmdb_get(f"/tv/{tv_id}/season/{season_number}")
+        eps = []
+        for e in (data.get("episodes") or []):
+            eps.append({
+                "episode_number": e.get("episode_number"),
+                "name": e.get("name") or f"Episódio {e.get('episode_number')}",
+                "overview": e.get("overview") or "",
+                "runtime": e.get("runtime"),
+            })
+        return jsonify({"ok": True, "episodes": eps})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
 
 
 # =========================================================
@@ -1023,11 +1062,16 @@ def watch(id):
         progress_pct = int((position / used_duration) * 100)
         progress_pct = max(0, min(100, progress_pct))
 
+    # ✅ flag pra template saber se é série
+    is_series = (str(content.content_type or "").strip().lower() == "serie")
+
     return render_template(
         "watch.html",
         content=content,
         progress_pct=progress_pct,
-        used_duration=used_duration or (duration or 3600)
+        used_duration=used_duration or (duration or 3600),
+        is_series=is_series,
+        tmdb_api_ok=bool(TMDB_API_KEY)
     )
 
 
@@ -1330,27 +1374,6 @@ def verify_admin():
         session["admin_liberado"] = True
         return redirect(url_for("admin"))
     return redirect(url_for("home"))
-
-
-@app.route("/admin/tmdb/lookup")
-@login_required
-def admin_tmdb_lookup():
-    main_account = (current_user.username == "zanagabriela26@gmail.com")
-    allowed = main_account or session.get("is_admin") or session.get("admin_liberado")
-    if not allowed:
-        return jsonify({"ok": False, "error": "Sem permissão"}), 403
-
-    item_type = (request.args.get("type") or "").strip().lower()  # movie | tv
-    tmdb_id = (request.args.get("id") or "").strip()
-
-    if not item_type or not tmdb_id:
-        return jsonify({"ok": False, "error": "Parâmetros faltando"}), 400
-
-    try:
-        info = tmdb_lookup_item(item_type, tmdb_id)
-        return jsonify({"ok": True, "data": info})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 400
 
 
 # =========================================================

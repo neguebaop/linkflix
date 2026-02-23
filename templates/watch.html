@@ -89,6 +89,87 @@
     .lf-btn--primary:hover{
       filter: brightness(1.05);
     }
+
+    /* ✅ UI da Série */
+    .series-card{
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .series-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top:10px;
+    }
+    .series-row label{
+      font-size: 12px;
+      opacity:.8;
+      display:block;
+      margin-bottom:6px;
+    }
+    .series-select{
+      min-width: 220px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.35);
+      color: #fff;
+      outline: none;
+    }
+    .series-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .btn-primary{
+      background: #E50914;
+      border: 0;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 800;
+      cursor:pointer;
+    }
+    .btn-primary:hover{ filter: brightness(1.05); }
+
+    .btn-ghost{
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 800;
+      cursor:pointer;
+    }
+    .btn-ghost:hover{ background: rgba(255,255,255,.09); }
+
+    .series-epbox{
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .series-ep-title{
+      font-weight: 900;
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+    .series-ep-desc{
+      margin: 0;
+      opacity: .85;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .series-warn{
+      margin-top: 10px;
+      font-size: 12px;
+      opacity: .8;
+    }
   </style>
 </head>
 
@@ -136,12 +217,68 @@
   </div>
 
   <div class="watch-wrap">
+
+    <!-- ✅ PLAYER / SÉRIE -->
     <div class="watch-player">
-      <iframe
-        src="https://playerflixapi.com/filme/{{ content.tmdb_id }}"
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-        allowfullscreen>
-      </iframe>
+
+      {% if not is_series %}
+        <!-- ✅ FILME (mantém como você já usa) -->
+        <iframe
+          src="https://playerflixapi.com/filme/{{ content.tmdb_id }}"
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          allowfullscreen>
+        </iframe>
+
+      {% else %}
+        <!-- ✅ SÉRIE (não deixa branco): UI de temporadas/episódios -->
+        <div class="series-card">
+          <div style="font-weight:900; font-size:16px;">Série</div>
+          <div class="series-warn">
+            Se você usa player externo, normalmente ele precisa de <b>temporada</b> e <b>episódio</b>.
+            Aqui você consegue selecionar e ver os episódios (dados do TMDB).
+          </div>
+
+          {% if not tmdb_api_ok %}
+            <div class="series-warn" style="color:#ffb4b4;">
+              ⚠️ TMDB_API_KEY não está configurada no servidor. Configure no Render para carregar temporadas/episódios.
+            </div>
+          {% endif %}
+
+          <div class="series-row">
+            <div>
+              <label>Temporada</label>
+              <select id="seasonSelect" class="series-select" disabled>
+                <option>Carregando...</option>
+              </select>
+            </div>
+            <div>
+              <label>Episódio</label>
+              <select id="episodeSelect" class="series-select" disabled>
+                <option>Selecione a temporada</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="series-actions">
+            <button id="openTmdbBtn" class="btn-ghost" type="button">
+              Ver no TMDB
+            </button>
+            <button id="copyInfoBtn" class="btn-ghost" type="button">
+              Copiar Temporada/Episódio
+            </button>
+          </div>
+
+          <div id="episodeBox" class="series-epbox" style="display:none;">
+            <p id="epTitle" class="series-ep-title"></p>
+            <p id="epDesc" class="series-ep-desc"></p>
+          </div>
+
+          <div class="series-warn">
+            Dica: você pode salvar no banco os campos “temporada/episódio” se quiser continuar do último episódio.
+          </div>
+        </div>
+      {% endif %}
+
     </div>
 
     <div class="watch-info">
@@ -229,8 +366,6 @@
   }
 
   async function sendProgressPercent(pct){
-    // Converte % em "position/duration" pra caber no endpoint do backend
-    // Ex: 50% => position=50, duration=100 (percent = position/duration)
     const safePct = Math.max(0, Math.min(100, Math.round(pct)));
     const duration = 100;
     const position = safePct;
@@ -249,14 +384,10 @@
     sendProgressPercent(currentPct);
   }
 
-  // “auto”: a cada 15s, soma um pouquinho (estimativa) e salva
   setInterval(() => {
     const now = Date.now();
-
-    // manda no máximo a cada 15s
     if(now - lastSentAt < 15000) return;
 
-    // estimativa: 1% a cada 20s
     const elapsedSec = (now - startedAt) / 1000;
     const inc = Math.floor(elapsedSec / 20);
     startedAt = now;
@@ -271,7 +402,6 @@
     }
   }, 3000);
 
-  // salva ao sair
   window.addEventListener("beforeunload", () => {
     const duration = 100;
     const position = Math.max(0, Math.min(100, Math.round(currentPct)));
@@ -283,8 +413,174 @@
     }catch(e){}
   });
 
-  // pinta progresso inicial vindo do backend (watch route já calcula progress_pct)
   paint(currentPct);
+
+  // =====================================================
+  // ✅ SÉRIES: temporadas/episódios (TMDB)
+  // =====================================================
+  const IS_SERIES = {{ 'true' if is_series else 'false' }};
+  const TMDB_ID = "{{ content.tmdb_id or '' }}".trim();
+
+  function $(id){ return document.getElementById(id); }
+
+  async function fetchJson(url){
+    const res = await fetch(url);
+    const data = await res.json();
+    return { ok: res.ok, data };
+  }
+
+  function setSelectOptions(selectEl, items, makeLabel){
+    selectEl.innerHTML = "";
+    items.forEach((it) => {
+      const opt = document.createElement("option");
+      opt.value = String(it.value);
+      opt.textContent = makeLabel(it);
+      selectEl.appendChild(opt);
+    });
+  }
+
+  function showEpisodeBox(title, desc){
+    const box = $("episodeBox");
+    const t = $("epTitle");
+    const d = $("epDesc");
+    if(!box || !t || !d) return;
+    t.textContent = title || "";
+    d.textContent = desc || "";
+    box.style.display = "block";
+  }
+
+  function safeInt(v, fallback=0){
+    const n = parseInt(String(v), 10);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  async function loadSeasons(){
+    const seasonSelect = $("seasonSelect");
+    const episodeSelect = $("episodeSelect");
+
+    if(!seasonSelect || !episodeSelect) return;
+
+    if(!TMDB_ID || !/^\d+$/.test(TMDB_ID)){
+      seasonSelect.disabled = true;
+      seasonSelect.innerHTML = `<option>ID TMDB inválido no conteúdo</option>`;
+      return;
+    }
+
+    seasonSelect.disabled = true;
+    seasonSelect.innerHTML = `<option>Carregando...</option>`;
+
+    const { ok, data } = await fetchJson(`/api/tmdb/tv/${encodeURIComponent(TMDB_ID)}/seasons`);
+    if(!ok || !data || !data.ok){
+      seasonSelect.disabled = true;
+      seasonSelect.innerHTML = `<option>Falha ao carregar temporadas</option>`;
+      return;
+    }
+
+    const seasons = (data.seasons || [])
+      .filter(s => s && typeof s.season_number !== "undefined")
+      .map(s => ({
+        value: s.season_number,
+        name: s.name,
+        episode_count: s.episode_count
+      }));
+
+    if(!seasons.length){
+      seasonSelect.disabled = true;
+      seasonSelect.innerHTML = `<option>Nenhuma temporada encontrada</option>`;
+      return;
+    }
+
+    setSelectOptions(seasonSelect, seasons, (s) => {
+      const n = safeInt(s.value, 0);
+      const c = s.episode_count ? ` • ${s.episode_count} eps` : "";
+      return `${s.name || ("Temporada " + n)}${c}`;
+    });
+
+    seasonSelect.disabled = false;
+
+    // carrega episódios da primeira temporada automaticamente
+    await loadEpisodes(seasons[0].value);
+
+    seasonSelect.addEventListener("change", async () => {
+      const sn = safeInt(seasonSelect.value, 1);
+      await loadEpisodes(sn);
+    });
+  }
+
+  async function loadEpisodes(seasonNumber){
+    const episodeSelect = $("episodeSelect");
+    const seasonSelect = $("seasonSelect");
+    if(!episodeSelect || !seasonSelect) return;
+
+    episodeSelect.disabled = true;
+    episodeSelect.innerHTML = `<option>Carregando episódios...</option>`;
+
+    const { ok, data } = await fetchJson(`/api/tmdb/tv/${encodeURIComponent(TMDB_ID)}/season/${encodeURIComponent(seasonNumber)}`);
+    if(!ok || !data || !data.ok){
+      episodeSelect.disabled = true;
+      episodeSelect.innerHTML = `<option>Falha ao carregar episódios</option>`;
+      return;
+    }
+
+    const eps = (data.episodes || [])
+      .filter(e => e && typeof e.episode_number !== "undefined")
+      .map(e => ({
+        value: e.episode_number,
+        name: e.name,
+        overview: e.overview || ""
+      }));
+
+    if(!eps.length){
+      episodeSelect.disabled = true;
+      episodeSelect.innerHTML = `<option>Nenhum episódio encontrado</option>`;
+      return;
+    }
+
+    setSelectOptions(episodeSelect, eps, (e) => {
+      const en = safeInt(e.value, 1);
+      return `${String(en).padStart(2,"0")} — ${e.name || ("Episódio " + en)}`;
+    });
+
+    episodeSelect.disabled = false;
+
+    // mostra detalhe do primeiro episódio
+    showEpisodeBox(eps[0].name, eps[0].overview);
+
+    episodeSelect.addEventListener("change", () => {
+      const idx = episodeSelect.selectedIndex;
+      const ep = eps[idx];
+      if(ep) showEpisodeBox(ep.name, ep.overview);
+    });
+  }
+
+  if(IS_SERIES){
+    const openBtn = $("openTmdbBtn");
+    const copyBtn = $("copyInfoBtn");
+    const seasonSelect = $("seasonSelect");
+    const episodeSelect = $("episodeSelect");
+
+    if(openBtn){
+      openBtn.addEventListener("click", () => {
+        window.open(`https://www.themoviedb.org/tv/${encodeURIComponent(TMDB_ID)}`, "_blank");
+      });
+    }
+
+    if(copyBtn){
+      copyBtn.addEventListener("click", async () => {
+        const s = seasonSelect ? seasonSelect.value : "";
+        const e = episodeSelect ? episodeSelect.value : "";
+        const txt = `TMDB TV ${TMDB_ID} — Temporada ${s} Episódio ${e}`;
+        try{
+          await navigator.clipboard.writeText(txt);
+          alert("Copiado: " + txt);
+        }catch(err){
+          alert(txt);
+        }
+      });
+    }
+
+    loadSeasons();
+  }
 </script>
 
 </body>
