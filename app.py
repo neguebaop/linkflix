@@ -1,11 +1,6 @@
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    session, flash, jsonify
-from flask import send_from_directory
-
-@app.route('/.well-known/assetlinks.json')
-def assetlinks():
-    return send_from_directory('static/.well-known', 'assetlinks.json')
+    session, flash, jsonify, send_from_directory
 )
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (
@@ -27,6 +22,17 @@ load_dotenv()
 
 # ✅ requests (MisticPay + TMDB)
 import requests
+
+# =========================================================
+# ======================= APP CONFIG =======================
+# =========================================================
+
+app = Flask(__name__)
+
+# ✅ Rota exigida pelo Android (TWA) para validar domínio
+@app.route('/.well-known/assetlinks.json')
+def assetlinks():
+    return send_from_directory('static/.well-known', 'assetlinks.json')
 
 # =========================================================
 # ====================== TMDB CONFIG =======================
