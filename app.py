@@ -705,32 +705,30 @@ def api_progress_get(content_id):
 @login_required
 @require_active_profile
 def home():
-    search = request.args.get("search", "")
-    category = request.args.get("category", "")
-    content_type = request.args.get("content_type", "")
+    search = (request.args.get("search") or "").strip()
+    category = (request.args.get("category") or "").strip()
+    content_type = (request.args.get("content_type") or "").strip()
 
     query = Content.query
 
-      if search:
-        st = f"%{search}%"
+    if search:
+        search_term = f"%{search}%"
         query = query.filter(
-            or_(
-                Content.title.ilike(st),
-                Content.category.ilike(st),
-                Content.description.ilike(st),
-                Content.extra_categories.any(Category.name.ilike(st))
-            )
+            (Content.title.ilike(search_term)) |
+            (Content.category.ilike(search_term)) |
+            (Content.description.ilike(search_term))
         )
 
     if category:
-        query = query.filter(Content.category.ilike(category))
+        query = query.filter(Content.category.ilike(f"%{category}%"))
 
     if content_type:
-        query = query.filter(Content.content_type.ilike(content_type))
+        query = query.filter(Content.content_type.ilike(f"%{content_type}%"))
 
     contents = query.all()
     featured_content = choice(contents) if contents else None
 
+    # Seções fixas (igual você já fazia)
     acao = Content.query.filter(Content.category.ilike("%ação%")).all()
     anime = Content.query.filter(Content.category.ilike("%anime%")).all()
     filmes = Content.query.filter(Content.content_type.ilike("%film%")).all()
@@ -781,7 +779,6 @@ def home():
         favorite_ids=favorite_ids,
         progress_map=progress_map
     )
-
 
 # =========================================================
 # =================== BROWSE: FILMES/SÉRIES =================
