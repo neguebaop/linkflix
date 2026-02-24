@@ -722,10 +722,10 @@ def home():
             )
         )
 
-     if category:
+    if category:
         query = query.filter(Content.category.ilike(category))
 
-     if content_type:
+    if content_type:
         query = query.filter(Content.content_type.ilike(content_type))
 
     contents = query.all()
