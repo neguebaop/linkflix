@@ -2,117 +2,207 @@
 
 {% block content %}
 
-  {% if featured_content %}
-  <div class="featured">
-      <img src="{{ featured_content.image }}" class="featured-img" alt="{{ featured_content.title }}">
-      <div class="featured-info">
-          <h1>{{ featured_content.title }}</h1>
-          <p>{{ featured_content.description }}</p>
-          <a href="{{ url_for('watch', id=featured_content.id) }}" class="btn-play">▶ Assistir</a>
+  {# =========================================================
+     ✅ MODO BUSCA: mostra TODOS resultados
+     - precisa do app.py passar: search e search_results
+     ========================================================= #}
+
+  {% if search %}
+    <h2 class="section-title">
+      Resultados para “{{ search }}” ({{ search_results|length }})
+    </h2>
+
+    {% macro card(movie, continue_mode=False) %}
+    <div class="movie-card {% if continue_mode %}continue{% endif %}">
+        <a class="card-link" href="{{ url_for('watch', id=movie.id) }}" aria-label="Assistir {{ movie.title }}"></a>
+
+        <img src="{{ movie.image }}" alt="{{ movie.title }}">
+
+        <div class="card-overlay">
+            <div class="card-top">
+                <a href="{{ url_for('watch', id=movie.id) }}"
+                   class="card-btn play"
+                   aria-label="Assistir {{ movie.title }}"
+                   title="Assistir">▶</a>
+
+                <a href="{{ url_for('toggle_favorite', content_id=movie.id, next=request.full_path) }}"
+                   class="card-btn add"
+                   aria-label="Adicionar/Remover da lista"
+                   title="{% if favorite_ids and movie.id in favorite_ids %}Remover da lista{% else %}Adicionar à lista{% endif %}">
+                    {% if favorite_ids and movie.id in favorite_ids %}✓{% else %}＋{% endif %}
+                </a>
+            </div>
+
+            <h4 class="card-title">{{ movie.title }}</h4>
+
+            <div class="card-meta">
+                {% if movie.content_type %}
+                    <span class="meta">{{ movie.content_type }}</span>
+                    <span class="dot">•</span>
+                {% endif %}
+                {% if movie.category %}
+                    <span class="badge">{{ movie.category }}</span>
+                {% else %}
+                    <span class="badge">Linkflix</span>
+                {% endif %}
+            </div>
+
+            {% if movie.description %}
+                <p class="card-desc">{{ movie.description }}</p>
+            {% else %}
+                <p class="card-desc">Assista agora no Linkflix.</p>
+            {% endif %}
+        </div>
+
+        {% if continue_mode %}
+        <div class="progress-bar">
+            {% set pct = progress_map.get(movie.id, 35) if progress_map else 35 %}
+            <span style="width: {{ pct }}%"></span>
+        </div>
+        {% endif %}
+    </div>
+    {% endmacro %}
+
+    {% if search_results and search_results|length > 0 %}
+      <div class="row-wrapper">
+          <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
+          <div class="row">
+              {% for movie in search_results %}
+                  {{ card(movie) }}
+              {% endfor %}
+          </div>
+          <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
       </div>
-  </div>
+    {% else %}
+      <p style="opacity:.85; margin-top:10px;">Nada encontrado.</p>
+    {% endif %}
+
+    <script>
+    function scrollRow(button, direction) {
+        const row = button.parentElement.querySelector('.row');
+        row.scrollBy({ left: direction * 400, behavior: 'smooth' });
+    }
+    </script>
+
+  {% else %}
+
+  {# =========================================================
+     ✅ MODO NORMAL (sem busca): sua home original
+     ========================================================= #}
+
+    {% if featured_content %}
+    <div class="featured">
+        <img src="{{ featured_content.image }}" class="featured-img" alt="{{ featured_content.title }}">
+        <div class="featured-info">
+            <h1>{{ featured_content.title }}</h1>
+            <p>{{ featured_content.description }}</p>
+            <a href="{{ url_for('watch', id=featured_content.id) }}" class="btn-play">▶ Assistir</a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% macro card(movie, continue_mode=False) %}
+    <div class="movie-card {% if continue_mode %}continue{% endif %}">
+        <a class="card-link" href="{{ url_for('watch', id=movie.id) }}" aria-label="Assistir {{ movie.title }}"></a>
+
+        <img src="{{ movie.image }}" alt="{{ movie.title }}">
+
+        <div class="card-overlay">
+            <div class="card-top">
+                <a href="{{ url_for('watch', id=movie.id) }}"
+                   class="card-btn play"
+                   aria-label="Assistir {{ movie.title }}"
+                   title="Assistir">▶</a>
+
+                <a href="{{ url_for('toggle_favorite', content_id=movie.id, next=request.full_path) }}"
+                   class="card-btn add"
+                   aria-label="Adicionar/Remover da lista"
+                   title="{% if favorite_ids and movie.id in favorite_ids %}Remover da lista{% else %}Adicionar à lista{% endif %}">
+                    {% if favorite_ids and movie.id in favorite_ids %}✓{% else %}＋{% endif %}
+                </a>
+            </div>
+
+            <h4 class="card-title">{{ movie.title }}</h4>
+
+            <div class="card-meta">
+                {% if movie.content_type %}
+                    <span class="meta">{{ movie.content_type }}</span>
+                    <span class="dot">•</span>
+                {% endif %}
+                {% if movie.category %}
+                    <span class="badge">{{ movie.category }}</span>
+                {% else %}
+                    <span class="badge">Linkflix</span>
+                {% endif %}
+            </div>
+
+            {% if movie.description %}
+                <p class="card-desc">{{ movie.description }}</p>
+            {% else %}
+                <p class="card-desc">Assista agora no Linkflix.</p>
+            {% endif %}
+        </div>
+
+        {% if continue_mode %}
+        <div class="progress-bar">
+            {% set pct = progress_map.get(movie.id, 35) if progress_map else 35 %}
+            <span style="width: {{ pct }}%"></span>
+        </div>
+        {% endif %}
+    </div>
+    {% endmacro %}
+
+    <h2 class="section-title">Continuar assistindo</h2>
+    <div class="row-wrapper">
+        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
+        <div class="row">
+            {% for movie in continuar %}
+                {{ card(movie, True) }}
+            {% endfor %}
+        </div>
+        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
+    </div>
+
+    <h2 class="section-title">Filmes</h2>
+    <div class="row-wrapper">
+        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
+        <div class="row">
+            {% for movie in filmes %}
+                {{ card(movie) }}
+            {% endfor %}
+        </div>
+        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
+    </div>
+
+    <h2 class="section-title">Filmes de Ação</h2>
+    <div class="row-wrapper">
+        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
+        <div class="row">
+            {% for movie in acao %}
+                {{ card(movie) }}
+            {% endfor %}
+        </div>
+        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
+    </div>
+
+    <h2 class="section-title">Animes</h2>
+    <div class="row-wrapper">
+        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
+        <div class="row">
+            {% for movie in anime %}
+                {{ card(movie) }}
+            {% endfor %}
+        </div>
+        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
+    </div>
+
+    <script>
+    function scrollRow(button, direction) {
+        const row = button.parentElement.querySelector('.row');
+        row.scrollBy({ left: direction * 400, behavior: 'smooth' });
+    }
+    </script>
+
   {% endif %}
-
-  {% macro card(movie, continue_mode=False) %}
-  <div class="movie-card {% if continue_mode %}continue{% endif %}">
-      <a class="card-link" href="{{ url_for('watch', id=movie.id) }}" aria-label="Assistir {{ movie.title }}"></a>
-
-      <img src="{{ movie.image }}" alt="{{ movie.title }}">
-
-      <div class="card-overlay">
-          <div class="card-top">
-              <a href="{{ url_for('watch', id=movie.id) }}"
-                 class="card-btn play"
-                 aria-label="Assistir {{ movie.title }}"
-                 title="Assistir">▶</a>
-
-              <a href="{{ url_for('toggle_favorite', content_id=movie.id, next=request.full_path) }}"
-                 class="card-btn add"
-                 aria-label="Adicionar/Remover da lista"
-                 title="{% if favorite_ids and movie.id in favorite_ids %}Remover da lista{% else %}Adicionar à lista{% endif %}">
-                  {% if favorite_ids and movie.id in favorite_ids %}✓{% else %}＋{% endif %}
-              </a>
-          </div>
-
-          <h4 class="card-title">{{ movie.title }}</h4>
-
-          <div class="card-meta">
-              {% if movie.content_type %}
-                  <span class="meta">{{ movie.content_type }}</span>
-                  <span class="dot">•</span>
-              {% endif %}
-              {% if movie.category %}
-                  <span class="badge">{{ movie.category }}</span>
-              {% else %}
-                  <span class="badge">Linkflix</span>
-              {% endif %}
-          </div>
-
-          {% if movie.description %}
-              <p class="card-desc">{{ movie.description }}</p>
-          {% else %}
-              <p class="card-desc">Assista agora no Linkflix.</p>
-          {% endif %}
-      </div>
-
-      {% if continue_mode %}
-      <div class="progress-bar">
-          {% set pct = progress_map.get(movie.id, 35) if progress_map else 35 %}
-          <span style="width: {{ pct }}%"></span>
-      </div>
-      {% endif %}
-  </div>
-  {% endmacro %}
-
-  <h2 class="section-title">Continuar assistindo</h2>
-  <div class="row-wrapper">
-      <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
-      <div class="row">
-          {% for movie in continuar %}
-              {{ card(movie, True) }}
-          {% endfor %}
-      </div>
-      <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
-  </div>
-
-  <h2 class="section-title">Filmes</h2>
-  <div class="row-wrapper">
-      <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
-      <div class="row">
-          {% for movie in filmes %}
-              {{ card(movie) }}
-          {% endfor %}
-      </div>
-      <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
-  </div>
-
-  <h2 class="section-title">Filmes de Ação</h2>
-  <div class="row-wrapper">
-      <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
-      <div class="row">
-          {% for movie in acao %}
-              {{ card(movie) }}
-          {% endfor %}
-      </div>
-      <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
-  </div>
-
-  <h2 class="section-title">Animes</h2>
-  <div class="row-wrapper">
-      <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
-      <div class="row">
-          {% for movie in anime %}
-              {{ card(movie) }}
-          {% endfor %}
-      </div>
-      <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
-  </div>
-
-  <script>
-  function scrollRow(button, direction) {
-      const row = button.parentElement.querySelector('.row');
-      row.scrollBy({ left: direction * 400, behavior: 'smooth' });
-  }
-  </script>
 
 {% endblock %}

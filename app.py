@@ -725,10 +725,17 @@ def home():
     if content_type:
         query = query.filter(Content.content_type.ilike(f"%{content_type}%"))
 
-    contents = query.all()
-    featured_content = choice(contents) if contents else None
+    contents = query.order_by(Content.id.desc()).all()
 
-    # Seções fixas (igual você já fazia)
+    # ✅ quando estiver buscando, NÃO escolhe aleatório (parece que só tem 1)
+    if search:
+        featured_content = None
+        search_results = contents
+    else:
+        featured_content = choice(contents) if contents else None
+        search_results = []
+
+    # seções fixas (como você já fazia)
     acao = Content.query.filter(Content.category.ilike("%ação%")).all()
     anime = Content.query.filter(Content.category.ilike("%anime%")).all()
     filmes = Content.query.filter(Content.content_type.ilike("%film%")).all()
@@ -777,7 +784,9 @@ def home():
         series=series,
         filmes=filmes,
         favorite_ids=favorite_ids,
-        progress_map=progress_map
+        progress_map=progress_map,
+        search=search,
+        search_results=search_results
     )
 
 # =========================================================
