@@ -700,7 +700,6 @@ def api_progress_get(content_id):
 # =========================================================
 # ============================ HOME =========================
 # =========================================================
-
 @app.route("/home")
 @login_required
 @require_active_profile
@@ -712,11 +711,12 @@ def home():
     query = Content.query
 
     if search:
-        search_term = f"%{search}%"
+        st = f"%{search}%"
         query = query.filter(
-            (Content.title.ilike(search_term)) |
-            (Content.category.ilike(search_term)) |
-            (Content.description.ilike(search_term))
+            (Content.title.ilike(st)) |
+            (Content.category.ilike(st)) |
+            (Content.description.ilike(st)) |
+            (Content.extra_categories.any(Category.name.ilike(st)))
         )
 
     if category:
