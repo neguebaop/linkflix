@@ -711,21 +711,21 @@ def home():
 
     query = Content.query
 
-   if search:
-    st = f"%{search}%"
-    query = query.filter(
-        or_(
-            Content.title.ilike(st),
-            Content.category.ilike(st),
-            Content.description.ilike(st),
-            Content.extra_categories.any(Category.name.ilike(st))
+      if search:
+        st = f"%{search}%"
+        query = query.filter(
+            or_(
+                Content.title.ilike(st),
+                Content.category.ilike(st),
+                Content.description.ilike(st),
+                Content.extra_categories.any(Category.name.ilike(st))
+            )
         )
-    )
 
-    if category:
+     if category:
         query = query.filter(Content.category.ilike(category))
 
-    if content_type:
+     if content_type:
         query = query.filter(Content.content_type.ilike(content_type))
 
     contents = query.all()
