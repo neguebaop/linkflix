@@ -1,41 +1,75 @@
+import os
+import re
+import uuid
+from datetime import datetime, timedelta
+from functools import wraps
+from random import choice
+from typing import Optional, Dict, Any
+
+import requests
+from dotenv import load_dotenv
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    session, flash, jsonify, send_from_directory
+    session, flash, jsonify, send_file
 )
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import (
     LoginManager, UserMixin, login_user, login_required,
     logout_user, current_user
 )
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from random import choice
-from functools import wraps
-import os
-import uuid
-from datetime import datetime, timedelta
-import re
 
-# ✅ .env
-from dotenv import load_dotenv
+# ✅ .env (carrega antes de ler variáveis)
 load_dotenv()
-
-# ✅ requests (MisticPay + TMDB)
-
-import requests
 
 # =========================================================
 # ======================= APP CONFIG =======================
 # =========================================================
 
 app = Flask(__name__)
-from flask import send_file
-import os
+
+# ✅ SECRET KEY (Render usa FLASK_SECRET_KEY)
+app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "linkflixsecret")
+
+# ✅ Segurança básica em produção (Render)
+if os.getenv("RENDER"):
+    app.config["SESSION_COOKIE_SECURE"] = True
+    app.config["REMEMBER_COOKIE_SECURE"] = True
+
+# ✅ DATABASE (SQLite local / Postgres no Render)
+db_url = os.getenv("DATABASE_URL", "sqlite:///linkflix.db")
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# ✅ UPLOAD CONFIG (avatar)
+app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads", "avatars")
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5MB
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+db = SQLAlchemy(app)
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
+
+# =========================================================
+# ============= .well-known (TWA assetlinks) ===============
+# =========================================================
 
 @app.route("/.well-known/assetlinks.json")
 def serve_assetlinks():
+    """
+    Serve o arquivo corretamente no caminho exigido pelo Android:
+    https://SEU_DOMINIO/.well-known/assetlinks.json
+    """
     path = os.path.join(app.root_path, "static", ".well-known", "assetlinks.json")
     return send_file(path, mimetype="application/json")
+
 
 # =========================================================
 # ====================== TMDB CONFIG =======================
@@ -45,7 +79,7 @@ TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w780"
 
 
-def tmdb_get(path: str, params: dict | None = None):
+def tmdb_get(path: str, params: Optional[Dict[str, Any]] = None):
     """Chama TMDb API v3."""
     if not TMDB_API_KEY:
         raise RuntimeError("TMDB_API_KEY não configurada.")
@@ -104,7 +138,7 @@ def tmdb_lookup_item(item_type: str, tmdb_id: str):
         "tmdb_id": tmdb_id,
         "content_type": "Filme" if item_type == "movie" else "Serie",
         "title": title or "",
-        "description": overview[:480],  # pra caber no limite
+        "description": overview[:480],
         "image": image,
         "category": main_category,
         "extra_categories": extra_categories,
@@ -113,44 +147,10 @@ def tmdb_lookup_item(item_type: str, tmdb_id: str):
 
 
 # =========================================================
-# ======================= APP CONFIG =======================
-# =========================================================
-
-app = Flask(__name__)
-
-# ✅ SECRET KEY (Render usa FLASK_SECRET_KEY)
-app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "linkflixsecret")
-
-# ✅ Segurança básica em produção (Render)
-if os.getenv("RENDER"):
-    app.config["SESSION_COOKIE_SECURE"] = True
-    app.config["REMEMBER_COOKIE_SECURE"] = True
-
-# ✅ DATABASE (SQLite local / Postgres no Render)
-db_url = os.getenv("DATABASE_URL", "sqlite:///linkflix.db")
-if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
-
-app.config["SQLALCHEMY_DATABASE_URI"] = db_url
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-# ✅ UPLOAD CONFIG (avatar)
-app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads", "avatars")
-app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5MB
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
-os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-
-db = SQLAlchemy(app)
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "login"
-
-
-# =========================================================
 # ✅✅✅ CRIA TABELAS NO PRIMEIRO REQUEST (SEGURO NO RENDER)
 # =========================================================
 _db_ready = False
+
 
 @app.before_request
 def _create_tables_once_safe():
@@ -181,66 +181,6 @@ PLAN_GOLD = "Gold"         # permanente
 
 PREMIUM_PRICE = 9.90
 GOLD_PRICE = 25.00
-
-
-# =========================================================
-# ================= HELPERS (sessão/perfil) =================
-# =========================================================
-
-def get_active_profile():
-    if not current_user.is_authenticated:
-        return None
-
-    pid = session.get("active_profile")
-    if not pid:
-        return None
-
-    ap = Profile.query.get(pid)
-    if (not ap) or (ap.user_id != current_user.id):
-        session.pop("active_profile", None)
-        return None
-    return ap
-
-
-# =========================================================
-# ======================= DECORATORS =======================
-# =========================================================
-
-def admin_required(f):
-    """
-    ✅ Corrigido:
-    - Se for /api/* retorna JSON 403 ao invés de redirect (isso consertou seu Import TMDB).
-    - Se for página normal, mantém redirect.
-    """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        allowed = bool(
-            session.get("is_admin")
-            or session.get("admin_liberado")
-            or getattr(current_user, "is_admin", False)
-        )
-
-        if not allowed:
-            if request.path.startswith("/api/"):
-                return jsonify({"ok": False, "error": "Sem permissão (admin)."}), 403
-            return redirect(url_for("index"))
-
-        return f(*args, **kwargs)
-    return decorated_function
-
-
-def require_active_profile(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return redirect(url_for("login"))
-
-        ap = get_active_profile()
-        if not ap:
-            return redirect(url_for("select_profile_page"))
-
-        return f(*args, **kwargs)
-    return decorated
 
 
 # =========================================================
@@ -282,7 +222,7 @@ class Category(db.Model):
 class Content(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200))
-    category = db.Column(db.String(100))  # pode ter várias por vírgula
+    category = db.Column(db.String(100))
     description = db.Column(db.String(500))
     image = db.Column(db.String(300))
     tmdb_id = db.Column(db.String(50))
@@ -342,6 +282,65 @@ def load_user(user_id):
             user.is_admin = True
             db.session.commit()
     return user
+
+
+# =========================================================
+# ================= HELPERS (sessão/perfil) =================
+# =========================================================
+
+def get_active_profile():
+    if not current_user.is_authenticated:
+        return None
+
+    pid = session.get("active_profile")
+    if not pid:
+        return None
+
+    ap = Profile.query.get(pid)
+    if (not ap) or (ap.user_id != current_user.id):
+        session.pop("active_profile", None)
+        return None
+    return ap
+
+
+# =========================================================
+# ======================= DECORATORS =======================
+# =========================================================
+
+def admin_required(f):
+    """
+    - Se for /api/* retorna JSON 403 ao invés de redirect
+    - Se for página normal, mantém redirect
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        allowed = bool(
+            session.get("is_admin")
+            or session.get("admin_liberado")
+            or getattr(current_user, "is_admin", False)
+        )
+
+        if not allowed:
+            if request.path.startswith("/api/"):
+                return jsonify({"ok": False, "error": "Sem permissão (admin)."}), 403
+            return redirect(url_for("index"))
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def require_active_profile(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for("login"))
+
+        ap = get_active_profile()
+        if not ap:
+            return redirect(url_for("select_profile_page"))
+
+        return f(*args, **kwargs)
+    return decorated
 
 
 # =========================================================
@@ -723,7 +722,6 @@ def home():
     favs = Favorite.query.filter_by(profile_id=profile_id).all() if profile_id else []
     favorite_ids = {f.content_id for f in favs}
 
-    # ✅ CONTINUAR ASSISTINDO REAL
     progress_map = {}
     continuar_real = []
 
@@ -772,34 +770,14 @@ def home():
 # =========================================================
 
 DEFAULT_GENRES = [
-    "Ação",
-    "Anime",
-    "Brasileiros",
-    "Clássicos",
-    "Comédia stand-up",
-    "Comédias",
-    "Como me sinto hoje?",
-    "Curtas",
-    "Documentários",
-    "Drama",
-    "Esportes",
-    "Estrangeiros",
-    "Fantasia",
-    "Fé e espiritualidade",
-    "Ficção científica",
-    "Hollywood",
-    "Independentes",
-    "LGBTQIA+",
-    "Música e musicais",
-    "Netflix no Oscar® 2026",
-    "Para toda a família",
-    "Policial",
-    "Premiados",
-    "Romance",
-    "Sua playlist do zodíaco",
-    "Suspense",
-    "Terror",
+    "Ação", "Anime", "Brasileiros", "Clássicos", "Comédia stand-up", "Comédias",
+    "Como me sinto hoje?", "Curtas", "Documentários", "Drama", "Esportes",
+    "Estrangeiros", "Fantasia", "Fé e espiritualidade", "Ficção científica",
+    "Hollywood", "Independentes", "LGBTQIA+", "Música e musicais",
+    "Netflix no Oscar® 2026", "Para toda a família", "Policial", "Premiados",
+    "Romance", "Sua playlist do zodíaco", "Suspense", "Terror",
 ]
+
 
 def _split_categories(cat_str: str):
     if not cat_str:
@@ -963,18 +941,12 @@ def embreve_page():
 
 # =========================================================
 # ===================== TMDB IMPORT (ADMIN) =================
-# ✅ Corrigido: existe SÓ 1 rota /api/tmdb/import (sem duplicar)
 # =========================================================
 
 @app.route("/api/tmdb/import", methods=["GET"])
 @login_required
 @admin_required
 def tmdb_import():
-    """
-    GET /api/tmdb/import?id=224372&type=tv
-    type pode ser: tv ou movie
-    se type não vier, tentamos primeiro movie depois tv
-    """
     raw_id = (request.args.get("id") or "").strip()
     forced_type = (request.args.get("type") or "").strip().lower()
 
@@ -991,7 +963,6 @@ def tmdb_import():
     for k in kinds:
         try:
             info = tmdb_lookup_item(k, tmdb_id)
-            # devolve no formato que seu admin.js já espera
             return jsonify({
                 "ok": True,
                 "tmdb_id": info["tmdb_id"],
@@ -1006,11 +977,6 @@ def tmdb_import():
 
     return jsonify({"ok": False, "error": last_err or "Não encontrei no TMDB com esse ID."}), 404
 
-
-# =========================================================
-# ============ TMDB TV: TEMPORADAS / EPISÓDIOS ==============
-# (metadata) - pra você listar no watch e evitar “tela branca”
-# =========================================================
 
 @app.route("/api/tmdb/tv/<int:tv_id>/seasons", methods=["GET"])
 @login_required
@@ -1081,7 +1047,6 @@ def watch(id):
         progress_pct = int((position / used_duration) * 100)
         progress_pct = max(0, min(100, progress_pct))
 
-    # ✅ flag pra template saber se é série
     is_series = (str(content.content_type or "").strip().lower() == "serie")
 
     return render_template(
