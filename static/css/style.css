@@ -1267,3 +1267,189 @@ a:hover{ color: #fff; }
 
 .genre-menu a:hover{ background: rgba(255,255,255,.08); }
 .genre-menu a.active{ background: rgba(229,9,20,.22); border: 1px solid rgba(229,9,20,.35); }
+
+/* =========================
+   PERFIS (Netflix-like)
+   ========================= */
+.pf-page{
+  width: min(1100px, 92vw);
+  margin: 0 auto;
+  padding: 60px 0 20px;
+  text-align: center;
+}
+.pf-title{
+  margin-top: 30px;
+  font-size: 52px;
+  font-weight: 600;
+}
+@media (max-width: 700px){
+  .pf-title{ font-size: 34px; }
+}
+
+.pf-grid{
+  display:flex;
+  justify-content:center;
+  gap: 60px;
+  margin-top: 60px;
+  flex-wrap: wrap;
+}
+
+.pf-card{
+  width: 180px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  text-decoration:none;
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.pf-card img{
+  width: 180px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 4px solid transparent;
+  transition: 0.3s ease;
+}
+.pf-card-name{
+  margin-top: 15px;
+  font-size: 18px;
+  color: #b3b3b3;
+  transition: 0.3s ease;
+}
+.pf-card:hover{ transform: scale(1.12); }
+.pf-card:hover img{ border-color: white; }
+.pf-card:hover .pf-card-name{ color: white; }
+
+.pf-add-box{
+  width: 180px;
+  height: 180px;
+  border: 4px dashed #555;
+  border-radius: 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 70px;
+  color: #777;
+  transition: 0.3s ease;
+}
+.pf-card.pf-add:hover .pf-add-box{
+  border-color: #fff;
+  color:#fff;
+}
+
+.pf-manage-btn{
+  display:inline-block;
+  margin-top: 80px;
+  padding: 12px 35px;
+  border: 1px solid #777;
+  color: #777;
+  text-decoration:none;
+  font-size: 16px;
+  transition: 0.3s ease;
+}
+.pf-manage-btn:hover{
+  border-color: #fff;
+  color:#fff;
+}
+
+/* =========================
+   DROPDOWN PERFIS (Netflix-like)
+   ========================= */
+.profile-menu{
+  width: 280px; /* um pouco maior p/ lista */
+  padding: 10px 0;
+}
+
+.pf-list{
+  display:flex;
+  flex-direction:column;
+  gap: 6px;
+  padding: 6px 8px 10px 8px;
+}
+
+.pf-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.pf-switch{
+  flex: 1;
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  text-decoration:none;
+  color:#fff;
+  background: transparent;
+}
+.pf-switch:hover{
+  background: rgba(255,255,255,0.08);
+}
+
+.pf-avatar{
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.pf-name{
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.92);
+}
+
+.pf-active{
+  margin-left:auto;
+  font-weight: 900;
+  opacity: .9;
+}
+
+.pf-edit{
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+  color: rgba(255,255,255,0.85);
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.20);
+}
+.pf-edit:hover{
+  background: rgba(255,255,255,0.10);
+  color:#fff;
+  border-color: rgba(255,255,255,0.22);
+}
+
+.pf-divider{
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin: 8px 0;
+}
+
+.pf-link{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  padding: 12px 14px;
+  text-decoration:none;
+  color:#fff;
+  opacity: .95;
+}
+.pf-link:hover{
+  background: rgba(255,255,255,0.10);
+}
+.pf-link i{
+  width: 18px;
+  text-align:center;
+  opacity: .9;
+}
+.pf-link.danger{
+  color: #fff;
+}

@@ -50,6 +50,7 @@
 
     <i class="fa-regular fa-bell nav-icon" aria-label="Notificações"></i>
 
+    <!-- ✅ PERFIL DROPDOWN (Netflix-like) -->
     <div class="profile-dropdown">
       <button class="profile-button" type="button" aria-label="Menu de perfil">
         <img
@@ -62,16 +63,74 @@
       </button>
 
       <div class="profile-menu">
-        <a href="{{ url_for('account') }}">Minha Conta</a>
-        <a href="{{ url_for('select_profile_page') }}">Trocar Perfil</a>
-        <a href="{{ url_for('create_profile') }}">Adicionar Perfil</a>
 
-        {% if active_profile %}
-          <a href="{{ url_for('edit_profile', profile_id=active_profile.id) }}">Editar Perfil</a>
+        <!-- ✅ lista de perfis (igual Netflix) -->
+        {% if current_user.is_authenticated %}
+          <div class="pf-list">
+            {% for p in current_user.profiles %}
+              <div class="pf-item">
+                <!-- trocar perfil -->
+                <a class="pf-switch" href="{{ url_for('select_profile', profile_id=p.id) }}">
+                  <img
+                    class="pf-avatar"
+                    src="{% if p.avatar %}{{ p.avatar }}{% else %}{{ url_for('static', filename='images/default_profile.png') }}{% endif %}"
+                    onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/default_profile.png') }}';"
+                    alt="{{ p.name }}"
+                  >
+                  <span class="pf-name">{{ p.name }}</span>
+
+                  {% if active_profile and p.id == active_profile.id %}
+                    <span class="pf-active">✓</span>
+                  {% endif %}
+                </a>
+
+                <!-- editar (lápis) -->
+                <a class="pf-edit" href="{{ url_for('edit_profile', profile_id=p.id) }}" title="Editar perfil" aria-label="Editar perfil">
+                  <i class="fa-solid fa-pencil"></i>
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="pf-divider"></div>
+
+          <a class="pf-link" href="{{ url_for('manage_profiles') }}">
+            <i class="fa-regular fa-pen-to-square"></i>
+            <span>Gerenciar perfis</span>
+          </a>
+
+          <a class="pf-link" href="{{ url_for('create_profile') }}">
+            <i class="fa-solid fa-plus"></i>
+            <span>Adicionar Perfil</span>
+          </a>
+
+          <div class="pf-divider"></div>
+
+          <a class="pf-link" href="{{ url_for('account') }}">
+            <i class="fa-regular fa-user"></i>
+            <span>Conta</span>
+          </a>
+
+          <a class="pf-link" href="{{ url_for('help_page') }}">
+            <i class="fa-regular fa-circle-question"></i>
+            <span>Central de Ajuda</span>
+          </a>
+
+          <a class="pf-link" href="{{ url_for('admin') }}">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Admin</span>
+          </a>
+
+          <div class="pf-divider"></div>
+
+          <a class="pf-link danger" href="{{ url_for('logout') }}">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Sair</span>
+          </a>
+        {% else %}
+          <a class="pf-link" href="{{ url_for('login') }}">Entrar</a>
         {% endif %}
 
-        <a href="{{ url_for('admin') }}">Admin</a>
-        <a href="{{ url_for('logout') }}">Sair</a>
       </div>
     </div>
   </div>
@@ -105,7 +164,6 @@
     toggle.addEventListener('click', (e) => { e.preventDefault(); openSearch(); });
     closeBtn.addEventListener('click', (e) => { e.preventDefault(); closeSearch(); });
 
-    // ✅ se clicar no input e estiver no mobile, garante aberto
     input.addEventListener('click', () => {
       if (window.innerWidth <= 768) navbar.classList.add('search-open');
     });
@@ -128,7 +186,6 @@
     display:flex; align-items:center; justify-content:center;
     padding:24px;
   ">
-    <!-- Texto principal -->
     <div id="lfx-logo" style="
       font-family: Arial, Helvetica, sans-serif;
       font-weight: 900;
@@ -136,7 +193,6 @@
       font-size: 72px;
       color: #E50914;
       text-transform: uppercase;
-
       opacity: 0;
       transform: scale(0.86);
       filter: drop-shadow(0 0 0 rgba(229,9,20,0));
@@ -144,7 +200,6 @@
       user-select:none;
     ">LINKFLIX</div>
 
-    <!-- Shine (luz passando) -->
     <div id="lfx-shine" style="
       position:absolute;
       width: 120%;
@@ -165,7 +220,6 @@
       mix-blend-mode: screen;
     "></div>
 
-    <!-- Vinheta/Glow sutil -->
     <div id="lfx-vignette" style="
       position:fixed; inset:0; pointer-events:none;
       background: radial-gradient(circle at center,
@@ -182,7 +236,6 @@
 
 <script>
 (function(){
-  // ✅ roda 1 vez por sessão (pra não repetir sempre)
   const KEY = "lfx_intro_seen_v1";
   if (sessionStorage.getItem(KEY) === "1") {
     const el = document.getElementById("lfx-intro");
@@ -197,11 +250,9 @@
   const vig   = document.getElementById("lfx-vignette");
   if (!intro || !logo || !shine || !vig) return;
 
-  // evita scroll “piscando”
   const oldOverflow = document.documentElement.style.overflow;
   document.documentElement.style.overflow = "hidden";
 
-  // 1) Entrada: aparece + zoom
   requestAnimationFrame(() => {
     vig.style.opacity = "1";
     logo.style.opacity = "1";
@@ -209,7 +260,6 @@
     logo.style.filter = "drop-shadow(0 0 22px rgba(229,9,20,0.25))";
   });
 
-  // 2) Shine passa por cima
   setTimeout(() => {
     shine.style.opacity = "0.95";
     shine.style.transition = "opacity 140ms ease";
@@ -217,17 +267,13 @@
     shine.style.transition = "transform 720ms ease, opacity 180ms ease";
   }, 450);
 
-  setTimeout(() => {
-    shine.style.opacity = "0";
-  }, 1200);
+  setTimeout(() => { shine.style.opacity = "0"; }, 1200);
 
-  // 3) “pulsinho” final bem sutil
   setTimeout(() => {
     logo.style.transform = "scale(1.03)";
     logo.style.filter = "drop-shadow(0 0 32px rgba(229,9,20,0.30))";
   }, 1150);
 
-  // 4) Fade out
   setTimeout(() => {
     logo.style.opacity = "0";
     vig.style.opacity = "0";
@@ -235,7 +281,6 @@
     intro.style.transition = "opacity 420ms ease";
   }, 1600);
 
-  // 5) Remove overlay
   setTimeout(() => {
     intro.remove();
     document.documentElement.style.overflow = oldOverflow;
