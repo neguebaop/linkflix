@@ -1,6 +1,11 @@
 from flask import (
     Flask, render_template, request, redirect, url_for,
     session, flash, jsonify
+from flask import send_from_directory
+
+@app.route('/.well-known/assetlinks.json')
+def assetlinks():
+    return send_from_directory('static/.well-known', 'assetlinks.json')
 )
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (

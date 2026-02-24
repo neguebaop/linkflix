@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.linkflix.app",
+      "sha256_cert_fingerprints": [
+        "40:7F:44:9F:D9:86:82:D5:D6:E8:7D:65:87:94:80:5D:26:7F:3A:0C:C0:ED:8E:BB:30:B9:EB:6E:E1:CF:50:78"
+      ]
+    }
+  }
+]
