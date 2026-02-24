@@ -1,22 +1,54 @@
-{% extends "admin_base.html" %}
-
+{% extends "layout.html" %}
 {% block content %}
-<div class="container mt-4">
-    <h2>Adicionar Premium Manual</h2>
 
-    <form method="POST">
-        <div class="mb-3">
-            <label>Email do Usuário</label>
-            <input type="email" name="email" class="form-control" required>
+<div class="container-nx" style="max-width: 820px;">
+  <div class="nx-title">Adicionar Premium Manual</div>
+  <div class="nx-subtitle">Ative Premium (30 dias) ou Gold (permanente) digitando o email do usuário.</div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div style="margin:14px 0; display:flex; flex-direction:column; gap:10px;">
+        {% for category, msg in messages %}
+          <div style="
+            padding:12px 14px;
+            border-radius:12px;
+            font-weight:700;
+            background: {% if category=='success' %}rgba(0,200,120,0.15){% elif category=='danger' %}rgba(255,70,70,0.15){% else %}rgba(255,255,255,0.08){% endif %};
+            border: 1px solid rgba(255,255,255,0.08);
+          ">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="nx-card">
+    <div class="nx-card-inner">
+      <form method="POST" action="{{ url_for('admin_manual_plan') }}" class="nx-form">
+        <div class="nx-field">
+          <label>Email do usuário</label>
+          <input class="nx-input" type="email" name="email" placeholder="ex: usuario@gmail.com" required>
         </div>
 
-        <button name="action" value="premium" class="btn btn-primary">
-            Ativar Premium (30 dias)
-        </button>
+        <div class="nx-divider"></div>
 
-        <button name="action" value="gold" class="btn btn-warning">
-            Ativar Gold (permanente)
-        </button>
-    </form>
+        <div class="nx-field">
+          <label>Ação</label>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <button class="nx-btn nx-btn-primary" type="submit" name="action" value="premium">
+              ✅ Ativar Premium (30 dias)
+            </button>
+            <button class="nx-btn nx-btn-ghost" type="submit" name="action" value="gold">
+              ⭐ Ativar Gold (permanente)
+            </button>
+          </div>
+        </div>
+
+        <div class="nx-divider"></div>
+
+        <a class="nx-btn nx-btn-ghost" href="{{ url_for('admin') }}">← Voltar</a>
+      </form>
+    </div>
+  </div>
 </div>
+
 {% endblock %}
