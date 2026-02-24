@@ -10,7 +10,7 @@ import requests
 from dotenv import load_dotenv
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    session, flash, jsonify, send_file
+    session, flash, jsonify, send_file, make_response
 )
 from flask_login import (
     LoginManager, UserMixin, login_user, login_required,
@@ -61,16 +61,29 @@ login_manager.login_view = "login"
 # ============= .well-known (TWA assetlinks) ===============
 # =========================================================
 
-@app.route("/.well-known/assetlinks.json")
-def serve_assetlinks():
+@app.route("/.well-known/assetlinks.json", methods=["GET"])
+def assetlinks():
     """
-    Serve o arquivo corretamente no caminho exigido pelo Android:
-    https://SEU_DOMINIO/.well-known/assetlinks.json
+    Retorna o JSON direto (não depende de arquivo em disco).
+    Isso evita o bug de responder 200 com body vazio no Render/proxy,
+    que faz o Android ficar em 1024 (não verificado).
     """
-    path = os.path.join(app.root_path, "static", ".well-known", "assetlinks.json")
-    return send_file(path, mimetype="application/json")
+    payload = [{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.linkflix.app",
+            "sha256_cert_fingerprints": [
+                "40:7F:44:9F:D9:86:82:D5:D6:E8:7D:65:87:94:80:5D:26:7F:3A:0C:C0:ED:8E:BB:30:B9:EB:6E:E1:CF:50:78"
+            ]
+        }
+    }]
 
-
+    resp = make_response(jsonify(payload), 200)
+    resp.headers["Content-Type"] = "application/json; charset=utf-8"
+    # Evita cache “estranho” durante verificação
+    resp.headers["Cache-Control"] = "no-store, max-age=0"
+    return resp
 # =========================================================
 # ====================== TMDB CONFIG =======================
 # =========================================================
