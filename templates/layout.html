@@ -116,5 +116,134 @@
   })();
 </script>
 
+<!-- ✅ INTRO LINKFLIX estilo Netflix (SÓ NO /login) -->
+{% if request.endpoint == 'login' %}
+<div id="lfx-intro" style="
+  position:fixed; inset:0; z-index:999999;
+  display:flex; align-items:center; justify-content:center;
+  background:#000;
+">
+  <div id="lfx-wrap" style="
+    position:relative;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  ">
+    <!-- Texto principal -->
+    <div id="lfx-logo" style="
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: 900;
+      letter-spacing: 6px;
+      font-size: 72px;
+      color: #E50914;
+      text-transform: uppercase;
+
+      opacity: 0;
+      transform: scale(0.86);
+      filter: drop-shadow(0 0 0 rgba(229,9,20,0));
+      transition: opacity 520ms ease, transform 520ms ease, filter 520ms ease;
+      user-select:none;
+    ">LINKFLIX</div>
+
+    <!-- Shine (luz passando) -->
+    <div id="lfx-shine" style="
+      position:absolute;
+      width: 120%;
+      height: 120%;
+      left:-10%;
+      top:-10%;
+      pointer-events:none;
+      opacity:0;
+      background: linear-gradient(115deg,
+        rgba(255,255,255,0) 0%,
+        rgba(255,255,255,0) 40%,
+        rgba(255,255,255,0.65) 50%,
+        rgba(255,255,255,0) 60%,
+        rgba(255,255,255,0) 100%
+      );
+      transform: translateX(-60%) skewX(-18deg);
+      transition: opacity 200ms ease;
+      mix-blend-mode: screen;
+    "></div>
+
+    <!-- Vinheta/Glow sutil -->
+    <div id="lfx-vignette" style="
+      position:fixed; inset:0; pointer-events:none;
+      background: radial-gradient(circle at center,
+        rgba(229,9,20,0.10) 0%,
+        rgba(0,0,0,0.0) 35%,
+        rgba(0,0,0,0.65) 72%,
+        rgba(0,0,0,0.92) 100%
+      );
+      opacity:0;
+      transition: opacity 520ms ease;
+    "></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ✅ roda 1 vez por sessão (pra não repetir sempre)
+  const KEY = "lfx_intro_seen_v1";
+  if (sessionStorage.getItem(KEY) === "1") {
+    const el = document.getElementById("lfx-intro");
+    if (el) el.remove();
+    return;
+  }
+  sessionStorage.setItem(KEY, "1");
+
+  const intro = document.getElementById("lfx-intro");
+  const logo  = document.getElementById("lfx-logo");
+  const shine = document.getElementById("lfx-shine");
+  const vig   = document.getElementById("lfx-vignette");
+  if (!intro || !logo || !shine || !vig) return;
+
+  // evita scroll “piscando”
+  const oldOverflow = document.documentElement.style.overflow;
+  document.documentElement.style.overflow = "hidden";
+
+  // 1) Entrada: aparece + zoom
+  requestAnimationFrame(() => {
+    vig.style.opacity = "1";
+    logo.style.opacity = "1";
+    logo.style.transform = "scale(1)";
+    logo.style.filter = "drop-shadow(0 0 22px rgba(229,9,20,0.25))";
+  });
+
+  // 2) Shine passa por cima
+  setTimeout(() => {
+    shine.style.opacity = "0.95";
+    shine.style.transition = "opacity 140ms ease";
+    shine.style.transform = "translateX(70%) skewX(-18deg)";
+    shine.style.transition = "transform 720ms ease, opacity 180ms ease";
+  }, 450);
+
+  setTimeout(() => {
+    shine.style.opacity = "0";
+  }, 1200);
+
+  // 3) “pulsinho” final bem sutil
+  setTimeout(() => {
+    logo.style.transform = "scale(1.03)";
+    logo.style.filter = "drop-shadow(0 0 32px rgba(229,9,20,0.30))";
+  }, 1150);
+
+  // 4) Fade out
+  setTimeout(() => {
+    logo.style.opacity = "0";
+    vig.style.opacity = "0";
+    intro.style.opacity = "0";
+    intro.style.transition = "opacity 420ms ease";
+  }, 1600);
+
+  // 5) Remove overlay
+  setTimeout(() => {
+    intro.remove();
+    document.documentElement.style.overflow = oldOverflow;
+  }, 2100);
+})();
+</script>
+{% endif %}
+<!-- /INTRO -->
+
 </body>
 </html>
