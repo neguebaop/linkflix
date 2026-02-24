@@ -5,6 +5,14 @@
   <div class="nx-title">Painel Admin</div>
   <div class="nx-subtitle">Adicione, edite e exclua conteúdos do Linkflix.</div>
 
+  <!-- ✅ NOVO: Atalho Premium Manual -->
+  <div style="margin: 12px 0 18px; display:flex; gap:12px; flex-wrap:wrap;">
+    <a class="nx-btn nx-btn-primary" href="{{ url_for('admin_manual_plan') }}">
+      ➕ Adicionar Premium Manual
+    </a>
+    <a class="nx-btn nx-btn-ghost" href="{{ url_for('home') }}">Voltar</a>
+  </div>
+
   <div class="nx-row">
     <div class="nx-col">
       <div class="nx-card">

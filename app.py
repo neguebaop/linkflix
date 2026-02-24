@@ -1372,7 +1372,42 @@ def verify_admin():
         return redirect(url_for("admin"))
     return redirect(url_for("home"))
 
+@app.route("/admin/manual-plan", methods=["GET", "POST"])
+@login_required
+@admin_required
+def admin_manual_plan():
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        action = (request.form.get("action") or "").strip().lower()
 
+        if not email:
+            flash("Digite o email do usuário.", "danger")
+            return redirect(url_for("admin_manual_plan"))
+
+        user = User.query.filter_by(username=email).first()
+        if not user:
+            flash("Usuário não encontrado.", "danger")
+            return redirect(url_for("admin_manual_plan"))
+
+        if action == "premium":
+            user.plan = PLAN_PREMIUM
+            user.plan_expires_at = datetime.utcnow() + timedelta(days=30)
+            db.session.commit()
+            flash(f"✅ Premium ativado por 30 dias para {user.username}", "success")
+
+        elif action == "gold":
+            user.plan = PLAN_GOLD
+            user.plan_expires_at = None
+            db.session.commit()
+            flash(f"✅ Gold ativado permanente para {user.username}", "success")
+
+        else:
+            flash("Ação inválida.", "danger")
+
+        return redirect(url_for("admin_manual_plan"))
+
+    # GET
+    return render_template("admin_manual_plan.html")
 # =========================================================
 # ====================== HELP / FEEDBACK ====================
 # =========================================================
