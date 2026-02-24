@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from random import choice
 from typing import Optional, Dict, Any
+from sqlalchemy import or_
 
 import requests
 from dotenv import load_dotenv
@@ -710,12 +711,16 @@ def home():
 
     query = Content.query
 
-    if search:
-        search_term = f"%{search}%"
-        query = query.filter(
-            (Content.title.ilike(search_term)) |
-            (Content.category.ilike(search_term))
+   if search:
+    st = f"%{search}%"
+    query = query.filter(
+        or_(
+            Content.title.ilike(st),
+            Content.category.ilike(st),
+            Content.description.ilike(st),
+            Content.extra_categories.any(Category.name.ilike(st))
         )
+    )
 
     if category:
         query = query.filter(Content.category.ilike(category))
@@ -1429,7 +1434,7 @@ def feedback():
 # =========================================================
 # ===================== RUN (DEV LOCAL) =====================
 # =========================================================
-
+11
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
