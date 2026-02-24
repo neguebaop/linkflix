@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ✅ requests (MisticPay + TMDB)
+
 import requests
 
 # =========================================================
@@ -28,11 +29,13 @@ import requests
 # =========================================================
 
 app = Flask(__name__)
+from flask import send_file
+import os
 
-# ✅ Rota exigida pelo Android (TWA) para validar domínio
-@app.route('/.well-known/assetlinks.json')
-def assetlinks():
-    return send_from_directory('static/.well-known', 'assetlinks.json')
+@app.route("/.well-known/assetlinks.json")
+def serve_assetlinks():
+    path = os.path.join(app.root_path, "static", ".well-known", "assetlinks.json")
+    return send_file(path, mimetype="application/json")
 
 # =========================================================
 # ====================== TMDB CONFIG =======================
