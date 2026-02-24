@@ -1,0 +1,22 @@
+{% extends "admin_base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Adicionar Premium Manual</h2>
+
+    <form method="POST">
+        <div class="mb-3">
+            <label>Email do Usuário</label>
+            <input type="email" name="email" class="form-control" required>
+        </div>
+
+        <button name="action" value="premium" class="btn btn-primary">
+            Ativar Premium (30 dias)
+        </button>
+
+        <button name="action" value="gold" class="btn btn-warning">
+            Ativar Gold (permanente)
+        </button>
+    </form>
+</div>
+{% endblock %}
