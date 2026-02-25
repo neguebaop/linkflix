@@ -5,13 +5,12 @@ from datetime import datetime, timedelta
 from functools import wraps
 from random import choice
 from typing import Optional, Dict, Any
-from sqlalchemy import or_
 
 import requests
 from dotenv import load_dotenv
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    session, flash, jsonify, send_file, make_response
+    session, flash, jsonify, make_response
 )
 from flask_login import (
     LoginManager, UserMixin, login_user, login_required,
@@ -64,11 +63,6 @@ login_manager.login_view = "login"
 
 @app.route("/.well-known/assetlinks.json", methods=["GET"])
 def assetlinks():
-    """
-    Retorna o JSON direto (não depende de arquivo em disco).
-    Isso evita o bug de responder 200 com body vazio no Render/proxy,
-    que faz o Android ficar em 1024 (não verificado).
-    """
     payload = [{
         "relation": ["delegate_permission/common.handle_all_urls"],
         "target": {
@@ -82,19 +76,20 @@ def assetlinks():
 
     resp = make_response(jsonify(payload), 200)
     resp.headers["Content-Type"] = "application/json; charset=utf-8"
-    # Evita cache “estranho” durante verificação
     resp.headers["Cache-Control"] = "no-store, max-age=0"
     return resp
+
+
 # =========================================================
 # ====================== TMDB CONFIG =======================
 # =========================================================
+
 TMDB_API_KEY = os.getenv("TMDB_API_KEY", "").strip()
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w780"
 
 
 def tmdb_get(path: str, params: Optional[Dict[str, Any]] = None):
-    """Chama TMDb API v3."""
     if not TMDB_API_KEY:
         raise RuntimeError("TMDB_API_KEY não configurada.")
     params = params or {}
@@ -107,13 +102,6 @@ def tmdb_get(path: str, params: Optional[Dict[str, Any]] = None):
 
 
 def normalize_tmdb_id(raw: str) -> str:
-    """
-    Aceita:
-    - "550"
-    - "https://www.themoviedb.org/movie/550-fight-club"
-    - "https://www.themoviedb.org/tv/1396-breaking-bad"
-    Retorna só o número como string.
-    """
     if not raw:
         return ""
     raw = raw.strip()
@@ -125,10 +113,6 @@ def normalize_tmdb_id(raw: str) -> str:
 
 
 def tmdb_lookup_item(item_type: str, tmdb_id: str):
-    """
-    item_type: "movie" ou "tv"
-    Retorna dict pronto pro seu admin preencher.
-    """
     tmdb_id = normalize_tmdb_id(tmdb_id)
     if item_type not in ("movie", "tv"):
         raise ValueError("type inválido")
@@ -140,10 +124,8 @@ def tmdb_lookup_item(item_type: str, tmdb_id: str):
     poster = data.get("poster_path") or ""
     backdrop = data.get("backdrop_path") or ""
 
-    # preferir backdrop, se não tiver usar poster
     image = (TMDB_IMG_BASE + backdrop) if backdrop else ((TMDB_IMG_BASE + poster) if poster else "")
 
-    # gêneros
     genres = [g.get("name") for g in (data.get("genres") or []) if g.get("name")]
     main_category = genres[0] if genres else ""
     extra_categories = genres[1:] if len(genres) > 1 else []
@@ -163,6 +145,7 @@ def tmdb_lookup_item(item_type: str, tmdb_id: str):
 # =========================================================
 # ✅✅✅ CRIA TABELAS NO PRIMEIRO REQUEST (SEGURO NO RENDER)
 # =========================================================
+
 _db_ready = False
 
 
@@ -220,7 +203,6 @@ class User(UserMixin, db.Model):
         return False
 
 
-# ✅ N:N categorias extras
 content_categories = db.Table(
     "content_categories",
     db.Column("content_id", db.Integer, db.ForeignKey("content.id"), primary_key=True),
@@ -322,10 +304,6 @@ def get_active_profile():
 # =========================================================
 
 def admin_required(f):
-    """
-    - Se for /api/* retorna JSON 403 ao invés de redirect
-    - Se for página normal, mantém redirect
-    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         allowed = bool(
@@ -700,6 +678,7 @@ def api_progress_get(content_id):
 # =========================================================
 # ============================ HOME =========================
 # =========================================================
+
 @app.route("/home")
 @login_required
 @require_active_profile
@@ -727,7 +706,6 @@ def home():
 
     contents = query.order_by(Content.id.desc()).all()
 
-    # ✅ quando estiver buscando, NÃO escolhe aleatório (parece que só tem 1)
     if search:
         featured_content = None
         search_results = contents
@@ -735,7 +713,6 @@ def home():
         featured_content = choice(contents) if contents else None
         search_results = []
 
-    # seções fixas (como você já fazia)
     acao = Content.query.filter(Content.category.ilike("%ação%")).all()
     anime = Content.query.filter(Content.category.ilike("%anime%")).all()
     filmes = Content.query.filter(Content.content_type.ilike("%film%")).all()
@@ -789,6 +766,7 @@ def home():
         search_results=search_results
     )
 
+
 # =========================================================
 # =================== BROWSE: FILMES/SÉRIES =================
 # =========================================================
@@ -813,51 +791,6 @@ def _split_categories(cat_str: str):
 def get_all_genres_for_type(content_type: str):
     genres = set(DEFAULT_GENRES)
 
-# =================== PREMIUM (PLATAFORMAS) ===================
-
-PREMIUM_PLATFORMS = [
-    "Disney",
-    "Netflix",
-    "Hbo max",
-    "You cine",
-    "Play Plus",
-    "Telecine Play",
-    "Globoplay",
-    "Super cine",
-    "Apple tv",
-    "Prime video",
-    "Star plus",
-    "Premier",
-]
-
-def get_all_platforms_for_premium():
-    platforms = set(PREMIUM_PLATFORMS)
-
-    rows = (
-        Content.query
-        .filter(Content.is_premium.is_(True))
-        .with_entities(Content.category)
-        .all()
-    )
-    for (cat,) in rows:
-        if cat:
-            for c in _split_categories(cat):
-                platforms.add(c)
-
-    rows2 = (
-        Content.query
-        .filter(Content.is_premium.is_(True))
-        .options(db.joinedload(Content.extra_categories))
-        .all()
-    )
-    for c in rows2:
-        for ec in (c.extra_categories or []):
-            if ec and ec.name:
-                platforms.add(ec.name.strip())
-
-    platforms = [p for p in platforms if p]
-    platforms.sort(key=lambda x: x.lower())
-    return platformsjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj
     rows = (
         Content.query
         .filter(Content.content_type == content_type)
@@ -1007,11 +940,61 @@ def embreve_page():
         progress_map=progress_map
     )
 
+
+# =========================================================
+# =================== PREMIUM (PLATAFORMAS) =================
+# =========================================================
+
+PREMIUM_PLATFORMS = [
+    "Disney",
+    "Netflix",
+    "Hbo max",
+    "You cine",
+    "Play Plus",
+    "Telecine Play",
+    "Globoplay",
+    "Super cine",
+    "Apple tv",
+    "Prime video",
+    "Star plus",
+    "Premier",
+]
+
+
+def get_all_platforms_for_premium():
+    platforms = set(PREMIUM_PLATFORMS)
+
+    rows = (
+        Content.query
+        .filter(Content.is_premium.is_(True))
+        .with_entities(Content.category)
+        .all()
+    )
+    for (cat,) in rows:
+        if cat:
+            for c in _split_categories(cat):
+                platforms.add(c)
+
+    rows2 = (
+        Content.query
+        .filter(Content.is_premium.is_(True))
+        .options(db.joinedload(Content.extra_categories))
+        .all()
+    )
+    for c in rows2:
+        for ec in (c.extra_categories or []):
+            if ec and ec.name:
+                platforms.add(ec.name.strip())
+
+    platforms = [p for p in platforms if p]
+    platforms.sort(key=lambda x: x.lower())
+    return platforms
+
+
 @app.route("/premium")
 @login_required
 @require_active_profile
 def premium_page():
-    # só Premium/Gold entra
     if not current_user.has_access_to_premium():
         flash("Área Premium: faça upgrade do plano para acessar.")
         return redirect(url_for("plans"))
@@ -1021,7 +1004,6 @@ def premium_page():
 
     q = Content.query.filter(Content.is_premium.is_(True))
 
-    # pesquisa (igual ao browse)
     if search:
         st = f"%{search}%"
         q = q.filter(
@@ -1029,7 +1011,6 @@ def premium_page():
             (Content.category.ilike(st))
         )
 
-    # filtro por "plataforma" (Disney/Netflix/etc)
     if platform:
         q = q.filter(
             (Content.category.ilike(f"%{platform}%")) |
@@ -1053,6 +1034,8 @@ def premium_page():
         favorite_ids=favorite_ids,
         progress_map=progress_map
     )
+
+
 # =========================================================
 # ===================== TMDB IMPORT (ADMIN) =================
 # =========================================================
@@ -1090,49 +1073,6 @@ def tmdb_import():
             last_err = str(e)
 
     return jsonify({"ok": False, "error": last_err or "Não encontrei no TMDB com esse ID."}), 404
-
-
-@app.route("/api/tmdb/tv/<int:tv_id>/seasons", methods=["GET"])
-@login_required
-@require_active_profile
-def tmdb_tv_seasons(tv_id):
-    if not TMDB_API_KEY:
-        return jsonify({"ok": False, "error": "TMDB_API_KEY não configurada no servidor."}), 400
-
-    try:
-        data = tmdb_get(f"/tv/{tv_id}")
-        seasons = []
-        for s in (data.get("seasons") or []):
-            seasons.append({
-                "season_number": s.get("season_number"),
-                "name": s.get("name") or f"Temporada {s.get('season_number')}",
-                "episode_count": s.get("episode_count"),
-            })
-        return jsonify({"ok": True, "seasons": seasons})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 400
-
-
-@app.route("/api/tmdb/tv/<int:tv_id>/season/<int:season_number>", methods=["GET"])
-@login_required
-@require_active_profile
-def tmdb_tv_season_episodes(tv_id, season_number):
-    if not TMDB_API_KEY:
-        return jsonify({"ok": False, "error": "TMDB_API_KEY não configurada no servidor."}), 400
-
-    try:
-        data = tmdb_get(f"/tv/{tv_id}/season/{season_number}")
-        eps = []
-        for e in (data.get("episodes") or []):
-            eps.append({
-                "episode_number": e.get("episode_number"),
-                "name": e.get("name") or f"Episódio {e.get('episode_number')}",
-                "overview": e.get("overview") or "",
-                "runtime": e.get("runtime"),
-            })
-        return jsonify({"ok": True, "episodes": eps})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 400
 
 
 # =========================================================
@@ -1473,6 +1413,7 @@ def verify_admin():
         return redirect(url_for("admin"))
     return redirect(url_for("home"))
 
+
 @app.route("/admin/manual-plan", methods=["GET", "POST"])
 @login_required
 @admin_required
@@ -1507,8 +1448,9 @@ def admin_manual_plan():
 
         return redirect(url_for("admin_manual_plan"))
 
-    # GET
     return render_template("admin_manual_plan.html")
+
+
 # =========================================================
 # ====================== HELP / FEEDBACK ====================
 # =========================================================
@@ -1530,6 +1472,7 @@ def feedback():
 # =========================================================
 # ===================== RUN (DEV LOCAL) =====================
 # =========================================================
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
