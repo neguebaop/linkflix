@@ -1,0 +1,95 @@
+{% extends "layout.html" %}
+{% block content %}
+
+{% macro card(movie) %}
+  <div class="movie-card {% if progress_map and progress_map.get(movie.id) %}continue{% endif %}">
+      <a class="card-link" href="{{ url_for('watch', id=movie.id) }}"></a>
+
+      <img src="{{ movie.image }}" alt="{{ movie.title }}">
+
+      <div class="card-overlay">
+          <div class="card-top">
+              <a href="{{ url_for('watch', id=movie.id) }}"
+                 class="card-btn play">▶</a>
+
+              <a href="{{ url_for('toggle_favorite', content_id=movie.id, next=request.full_path) }}"
+                 class="card-btn add">
+                  {% if favorite_ids and movie.id in favorite_ids %}✓{% else %}＋{% endif %}
+              </a>
+          </div>
+
+          <h4 class="card-title">{{ movie.title }}</h4>
+
+          <div class="card-meta">
+              {% if movie.content_type %}
+                  <span class="meta">{{ movie.content_type }}</span>
+                  <span class="dot">•</span>
+              {% endif %}
+              {% if movie.category %}
+                  <span class="badge">{{ movie.category }}</span>
+              {% endif %}
+          </div>
+
+          <p class="card-desc">
+              {{ movie.description or "Assista agora no Linkflix." }}
+          </p>
+      </div>
+
+      {% if progress_map and progress_map.get(movie.id) %}
+      <div class="progress-bar">
+          <span style="width: {{ progress_map.get(movie.id) }}%"></span>
+      </div>
+      {% endif %}
+  </div>
+{% endmacro %}
+
+<div class="browse-top">
+  <h1 class="browse-title">{{ page_title }}</h1>
+
+  <div class="genre-dropdown">
+    <button class="genre-btn" type="button" onclick="togglePlatforms()">
+      Plataformas <i class="fa fa-caret-down"></i>
+    </button>
+
+    <div class="genre-menu" id="platformMenu">
+
+      <a href="{{ request.path }}"
+         class="{% if not selected_platform %}active{% endif %}">
+        Todos
+      </a>
+
+      {% for p in platforms %}
+        <a href="{{ request.path }}?platform={{ p|urlencode }}"
+           class="{% if selected_platform == p %}active{% endif %}">
+          {{ p }}
+        </a>
+      {% endfor %}
+
+    </div>
+  </div>
+</div>
+
+<div class="browse-grid">
+  {% for movie in items %}
+    {{ card(movie) }}
+  {% else %}
+    <p style="opacity:.8;">Nenhum conteúdo Premium encontrado.</p>
+  {% endfor %}
+</div>
+
+<script>
+function togglePlatforms(){
+  const menu = document.getElementById("platformMenu");
+  if(!menu) return;
+  menu.classList.toggle("open");
+}
+
+document.addEventListener("click", function(e){
+  const dd = document.querySelector(".genre-dropdown");
+  const menu = document.getElementById("platformMenu");
+  if (!dd || !menu) return;
+  if (!dd.contains(e.target)) menu.classList.remove("open");
+});
+</script>
+
+{% endblock %}
