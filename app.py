@@ -813,6 +813,51 @@ def _split_categories(cat_str: str):
 def get_all_genres_for_type(content_type: str):
     genres = set(DEFAULT_GENRES)
 
+# =================== PREMIUM (PLATAFORMAS) ===================
+
+PREMIUM_PLATFORMS = [
+    "Disney",
+    "Netflix",
+    "Hbo max",
+    "You cine",
+    "Play Plus",
+    "Telecine Play",
+    "Globoplay",
+    "Super cine",
+    "Apple tv",
+    "Prime video",
+    "Star plus",
+    "Premier",
+]
+
+def get_all_platforms_for_premium():
+    platforms = set(PREMIUM_PLATFORMS)
+
+    rows = (
+        Content.query
+        .filter(Content.is_premium.is_(True))
+        .with_entities(Content.category)
+        .all()
+    )
+    for (cat,) in rows:
+        if cat:
+            for c in _split_categories(cat):
+                platforms.add(c)
+
+    rows2 = (
+        Content.query
+        .filter(Content.is_premium.is_(True))
+        .options(db.joinedload(Content.extra_categories))
+        .all()
+    )
+    for c in rows2:
+        for ec in (c.extra_categories or []):
+            if ec and ec.name:
+                platforms.add(ec.name.strip())
+
+    platforms = [p for p in platforms if p]
+    platforms.sort(key=lambda x: x.lower())
+    return platformsjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj
     rows = (
         Content.query
         .filter(Content.content_type == content_type)
@@ -962,7 +1007,52 @@ def embreve_page():
         progress_map=progress_map
     )
 
+@app.route("/premium")
+@login_required
+@require_active_profile
+def premium_page():
+    # só Premium/Gold entra
+    if not current_user.has_access_to_premium():
+        flash("Área Premium: faça upgrade do plano para acessar.")
+        return redirect(url_for("plans"))
 
+    search = (request.args.get("search") or "").strip()
+    platform = (request.args.get("platform") or "").strip()
+
+    q = Content.query.filter(Content.is_premium.is_(True))
+
+    # pesquisa (igual ao browse)
+    if search:
+        st = f"%{search}%"
+        q = q.filter(
+            (Content.title.ilike(st)) |
+            (Content.category.ilike(st))
+        )
+
+    # filtro por "plataforma" (Disney/Netflix/etc)
+    if platform:
+        q = q.filter(
+            (Content.category.ilike(f"%{platform}%")) |
+            (Content.extra_categories.any(Category.name.ilike(f"%{platform}%")))
+        )
+
+    items = q.order_by(Content.id.desc()).all()
+
+    platforms = get_all_platforms_for_premium()
+
+    profile_id = session.get("active_profile")
+    favorite_ids, progress_map = build_favorites_and_progress(profile_id)
+
+    return render_template(
+        "premium.html",
+        page_title="Premium",
+        items=items,
+        platforms=platforms,
+        selected_platform=platform,
+        search=search,
+        favorite_ids=favorite_ids,
+        progress_map=progress_map
+    )
 # =========================================================
 # ===================== TMDB IMPORT (ADMIN) =================
 # =========================================================
@@ -1440,7 +1530,6 @@ def feedback():
 # =========================================================
 # ===================== RUN (DEV LOCAL) =====================
 # =========================================================
-11
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
