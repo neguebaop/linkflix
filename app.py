@@ -102,6 +102,13 @@ def tmdb_get(path: str, params: Optional[Dict[str, Any]] = None):
 
 
 def normalize_tmdb_id(raw: str) -> str:
+    """
+    Aceita:
+    - "550"
+    - "https://www.themoviedb.org/movie/550-fight-club"
+    - "https://www.themoviedb.org/tv/1396-breaking-bad"
+    Retorna só o número como string.
+    """
     if not raw:
         return ""
     raw = raw.strip()
@@ -1075,6 +1082,48 @@ def tmdb_import():
     return jsonify({"ok": False, "error": last_err or "Não encontrei no TMDB com esse ID."}), 404
 
 
+# ✅✅✅ ROTAS DE SÉRIES (voltaram — eram elas que alimentavam temporada/episódio)
+@app.route("/api/tmdb/tv/<int:tv_id>/seasons", methods=["GET"])
+@login_required
+@require_active_profile
+def tmdb_tv_seasons(tv_id):
+    if not TMDB_API_KEY:
+        return jsonify({"ok": False, "error": "TMDB_API_KEY não configurada no servidor."}), 400
+    try:
+        data = tmdb_get(f"/tv/{tv_id}")
+        seasons = []
+        for s in (data.get("seasons") or []):
+            seasons.append({
+                "season_number": s.get("season_number"),
+                "name": s.get("name") or f"Temporada {s.get('season_number')}",
+                "episode_count": s.get("episode_count"),
+            })
+        return jsonify({"ok": True, "seasons": seasons})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/tmdb/tv/<int:tv_id>/season/<int:season_number>", methods=["GET"])
+@login_required
+@require_active_profile
+def tmdb_tv_season_episodes(tv_id, season_number):
+    if not TMDB_API_KEY:
+        return jsonify({"ok": False, "error": "TMDB_API_KEY não configurada no servidor."}), 400
+    try:
+        data = tmdb_get(f"/tv/{tv_id}/season/{season_number}")
+        eps = []
+        for e in (data.get("episodes") or []):
+            eps.append({
+                "episode_number": e.get("episode_number"),
+                "name": e.get("name") or f"Episódio {e.get('episode_number')}",
+                "overview": e.get("overview") or "",
+                "runtime": e.get("runtime"),
+            })
+        return jsonify({"ok": True, "episodes": eps})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
 # =========================================================
 # ============================ WATCH ========================
 # =========================================================
@@ -1300,7 +1349,13 @@ def admin():
             category = (request.form.get("category") or "").strip()
             description = (request.form.get("description") or "").strip()
             image = (request.form.get("image") or "").strip()
-            tmdb_id = (request.form.get("tmdb_id") or "").strip()
+
+            # ✅ NORMALIZA TMDB ID (aceita link e salva só o número)
+            tmdb_id = normalize_tmdb_id((request.form.get("tmdb_id") or "").strip())
+            if tmdb_id and not tmdb_id.isdigit():
+                flash("TMDB ID inválido (cole o link do TMDB ou só o número).")
+                return redirect(url_for("admin"))
+
             content_type = (request.form.get("content_type") or "Filme").strip()
             is_premium = ("premium" in request.form)
             duration_seconds = int(request.form.get("duration_seconds") or 0)
@@ -1363,7 +1418,13 @@ def admin_edit(id):
         content.category = (request.form.get("category") or "").strip()
         content.description = (request.form.get("description") or "").strip()
         content.image = (request.form.get("image") or "").strip()
-        content.tmdb_id = (request.form.get("tmdb_id") or "").strip()
+
+        # ✅ NORMALIZA TMDB ID (aceita link e salva só o número)
+        content.tmdb_id = normalize_tmdb_id((request.form.get("tmdb_id") or "").strip())
+        if content.tmdb_id and not content.tmdb_id.isdigit():
+            flash("TMDB ID inválido (cole o link do TMDB ou só o número).")
+            return redirect(url_for("admin_edit", id=id))
+
         content.content_type = (request.form.get("content_type") or "Filme").strip()
         content.is_premium = ("premium" in request.form)
         content.duration_seconds = int(request.form.get("duration_seconds") or 0)
