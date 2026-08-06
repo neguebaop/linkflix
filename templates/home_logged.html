@@ -246,34 +246,30 @@
     </section>
     {% endif %}
 
-    {% set base_shelves = [
-      ('Filmes', filmes),
-      ('Filmes de Ação', acao),
-      ('Animes', anime),
-      ('Séries', series)
-    ] %}
-    {% for shelf_title, shelf_items in base_shelves %}
+    {% macro render_shelf(shelf_title, shelf_items) %}
       {% if shelf_items %}
       <section class="catalog-shelf">
         <h2 class="section-title">{{ shelf_title }}</h2>
         <div class="row-wrapper home-row-wrapper">
             <button class="arrow left" type="button" onclick="scrollRow(this, -1)" aria-label="Voltar">❮</button>
-            <div class="row">{% for movie in shelf_items %}{{ card(movie) }}{% endfor %}</div>
+            <div class="row">
+              {% for movie in shelf_items %}
+                {{ card(movie) }}
+              {% endfor %}
+            </div>
             <button class="arrow right" type="button" onclick="scrollRow(this, 1)" aria-label="Avançar">❯</button>
         </div>
       </section>
       {% endif %}
-    {% endfor %}
+    {% endmacro %}
+
+    {{ render_shelf('Filmes', filmes) }}
+    {{ render_shelf('Filmes de Ação', acao) }}
+    {{ render_shelf('Animes', anime) }}
+    {{ render_shelf('Séries', series) }}
 
     {% for shelf in shelf_rows %}
-    <section class="catalog-shelf">
-      <h2 class="section-title">{{ shelf.title }}</h2>
-      <div class="row-wrapper home-row-wrapper">
-          <button class="arrow left" type="button" onclick="scrollRow(this, -1)" aria-label="Voltar">❮</button>
-          <div class="row">{% for movie in shelf.items %}{{ card(movie) }}{% endfor %}</div>
-          <button class="arrow right" type="button" onclick="scrollRow(this, 1)" aria-label="Avançar">❯</button>
-      </div>
-    </section>
+      {{ render_shelf(shelf['title'], shelf['items']) }}
     {% endfor %}
 
     <script>
