@@ -2071,3 +2071,72 @@ body:has(.browse-hero-shell) .browse-featured .featured-info{
   .home-row-wrapper .row{ min-height:136px !important; padding-top:8px !important; padding-bottom:14px !important; }
   .catalog-shelf{ margin-bottom:10px !important; }
 }
+
+/* ===== Linkflix V21: menu de perfis refinado ===== */
+.profile-menu{width:300px!important;border:1px solid rgba(255,255,255,.08);background:linear-gradient(155deg,rgba(25,25,25,.99),rgba(12,12,12,.99))!important;box-shadow:0 18px 55px rgba(0,0,0,.88)!important;transform-origin:top right}
+.profile-dropdown:hover .profile-menu{animation:pfMenuIn .22s cubic-bezier(.2,.8,.2,1) both}
+.pf-list{gap:4px!important;padding:8px!important}
+.pf-item{min-width:0;width:100%;border-radius:10px;transition:background .18s ease,transform .18s ease}
+.pf-item:hover{background:rgba(255,255,255,.065);transform:translateX(2px)}
+.pf-switch{min-width:0!important;overflow:hidden!important;padding:9px 8px!important;background:transparent!important;transform:none!important}
+.pf-avatar{flex:0 0 36px;width:36px!important;height:36px!important;transition:transform .2s ease,box-shadow .2s ease}
+.pf-item:hover .pf-avatar{transform:scale(1.07);box-shadow:0 0 0 2px rgba(229,9,20,.45)}
+.pf-name{display:block;min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px!important;line-height:1.2}
+.pf-active{flex:0 0 auto;margin-left:4px!important;color:#fff;font-size:15px}
+.pf-edit{flex:0 0 38px!important;width:38px!important;height:38px!important;padding:0!important;margin-right:4px;border-radius:10px!important;transform:none!important;transition:background .18s,border-color .18s,transform .18s!important}
+.pf-edit:hover{transform:scale(1.06)!important;background:rgba(229,9,20,.18)!important;border-color:rgba(255,62,75,.55)!important}
+.pf-link{transition:background .18s,transform .18s!important}.pf-link:hover{transform:translateX(3px)!important;background:rgba(255,255,255,.075)!important}
+@keyframes pfMenuIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:480px){.profile-menu{width:min(300px,calc(100vw - 24px))!important;right:-6px!important}.pf-name{max-width:none}}
+
+
+/* ===== Linkflix V22: menu premium igual à referência ===== */
+.profile-menu{
+  width:390px!important;
+  right:-4px!important;
+  top:calc(100% + 10px)!important;
+  padding:0!important;
+  border:1px solid rgba(255,31,58,.72)!important;
+  border-radius:18px!important;
+  overflow:hidden!important;
+  background:
+    radial-gradient(circle at 50% -10%,rgba(255,18,45,.12),transparent 38%),
+    linear-gradient(180deg,rgba(9,9,11,.995),rgba(7,7,9,.995))!important;
+  box-shadow:0 24px 80px rgba(0,0,0,.92),0 0 30px rgba(255,0,30,.12),inset 0 0 0 1px rgba(255,255,255,.025)!important;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transform:translateY(12px) scale(.97)!important;
+  transition:opacity .22s ease,transform .24s cubic-bezier(.2,.8,.2,1),visibility .22s!important;
+}
+.profile-dropdown:hover .profile-menu,.profile-dropdown.menu-open .profile-menu{
+  opacity:1!important;visibility:visible!important;pointer-events:auto!important;
+  transform:translateY(0) scale(1)!important;animation:none!important;
+}
+.pf-menu-head{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,30,55,.22);background:linear-gradient(180deg,rgba(255,20,45,.035),transparent)}
+.pf-brand{display:flex;align-items:center;gap:3px;font-size:22px;font-weight:900;font-style:italic;letter-spacing:-1px;color:#fff;text-shadow:0 0 14px rgba(255,255,255,.12)}
+.pf-brand b{color:#ff1638}.pf-brand-l{font-size:34px;line-height:1;color:#ff1738;margin-right:8px;transform:skew(-8deg);text-shadow:0 0 14px rgba(255,18,47,.75)}
+.pf-close{width:38px;height:38px;border:0;background:transparent;color:#ff1738;font-size:22px;cursor:pointer;border-radius:50%;transition:background .18s,transform .18s}
+.pf-close:hover{background:rgba(255,23,56,.12);transform:rotate(90deg)}
+.pf-list{padding:14px 18px 10px!important;gap:8px!important}
+.pf-item{height:72px!important;padding:0 10px!important;border:1px solid rgba(255,255,255,.055)!important;border-radius:12px!important;background:linear-gradient(100deg,rgba(255,255,255,.035),rgba(255,255,255,.012))!important;box-shadow:inset 0 0 18px rgba(255,255,255,.01);transition:transform .2s ease,border-color .2s ease,background .2s ease,box-shadow .2s ease!important}
+.pf-item:hover{transform:translateX(4px) scale(1.01)!important;border-color:rgba(255,28,55,.45)!important;background:linear-gradient(100deg,rgba(255,25,50,.09),rgba(255,255,255,.018))!important;box-shadow:0 0 22px rgba(255,0,35,.08)!important}
+.pf-switch{height:100%!important;padding:7px 0!important;gap:14px!important}
+.pf-avatar{width:52px!important;height:52px!important;flex:0 0 52px!important;border-radius:13px!important;border:1px solid rgba(255,24,50,.65)!important;box-shadow:0 0 14px rgba(255,0,34,.18)!important}
+.pf-item:hover .pf-avatar{transform:scale(1.05)!important;box-shadow:0 0 20px rgba(255,0,35,.32)!important}
+.pf-name{font-size:16px!important;font-weight:800!important;max-width:190px!important}
+.pf-active{font-size:22px!important;color:#ff2847!important;text-shadow:0 0 10px rgba(255,30,60,.8)}
+.pf-edit{width:46px!important;height:46px!important;flex:0 0 46px!important;margin:0!important;border:1px solid rgba(255,30,55,.55)!important;border-radius:11px!important;color:#ff3150!important;display:flex!important;align-items:center!important;justify-content:center!important;background:rgba(255,20,45,.025)!important}
+.pf-edit:hover{background:rgba(255,25,50,.13)!important;transform:scale(1.07)!important;box-shadow:0 0 18px rgba(255,0,30,.14)!important}
+.pf-divider{margin:0 18px!important;height:1px!important;background:rgba(255,255,255,.085)!important}
+.pf-link{margin:0 18px!important;padding:14px 12px!important;min-height:52px!important;border-radius:10px!important;display:flex!important;align-items:center!important;gap:14px!important;font-size:16px!important;color:#f4f4f4!important;transform:none!important}
+.pf-link i:first-child{width:24px;text-align:center;color:#ff2344;font-size:20px}
+.pf-link span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-chevron{margin-left:auto;color:rgba(255,255,255,.52)!important;font-size:13px!important;width:auto!important;transition:transform .18s,color .18s}
+.pf-link:hover{background:rgba(255,24,48,.075)!important;transform:translateX(3px)!important}
+.pf-link:hover .pf-chevron{transform:translateX(3px);color:#fff!important}
+.pf-link.danger{margin-top:12px!important;margin-bottom:20px!important;border:1px solid rgba(255,28,55,.55)!important;background:linear-gradient(90deg,rgba(255,25,50,.075),rgba(255,25,50,.02))!important}
+.pf-link.danger:hover{background:rgba(255,25,50,.14)!important;box-shadow:0 0 20px rgba(255,0,35,.1)}
+@media(max-width:520px){
+ .profile-menu{position:fixed!important;top:8px!important;right:8px!important;left:8px!important;width:auto!important;max-height:calc(100vh - 16px)!important;overflow-y:auto!important;border-radius:18px!important}
+ .pf-name{max-width:calc(100vw - 205px)!important}
+ .pf-menu-head{position:sticky;top:0;z-index:3;background:#09090b}
+}

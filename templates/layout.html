@@ -66,6 +66,10 @@
       </button>
 
       <div class="profile-menu">
+        <div class="pf-menu-head">
+          <div class="pf-brand"><span class="pf-brand-l">L</span><span>LINK</span><b>FLIX</b></div>
+          <button class="pf-close" type="button" aria-label="Fechar menu"><i class="fa-solid fa-xmark"></i></button>
+        </div>
 
         <!-- ✅ lista de perfis (igual Netflix) -->
         {% if current_user.is_authenticated %}
@@ -99,36 +103,36 @@
 
           <a class="pf-link" href="{{ url_for('manage_profiles') }}">
             <i class="fa-regular fa-pen-to-square"></i>
-            <span>Gerenciar perfis</span>
+            <span>Gerenciar perfis</span><i class="fa-solid fa-chevron-right pf-chevron"></i>
           </a>
 
           <a class="pf-link" href="{{ url_for('create_profile') }}">
             <i class="fa-solid fa-plus"></i>
-            <span>Adicionar Perfil</span>
+            <span>Adicionar Perfil</span><i class="fa-solid fa-chevron-right pf-chevron"></i>
           </a>
 
           <div class="pf-divider"></div>
 
           <a class="pf-link" href="{{ url_for('account') }}">
             <i class="fa-regular fa-user"></i>
-            <span>Conta</span>
+            <span>Conta</span><i class="fa-solid fa-chevron-right pf-chevron"></i>
           </a>
 
           <a class="pf-link" href="{{ url_for('help_page') }}">
             <i class="fa-regular fa-circle-question"></i>
-            <span>Central de Ajuda</span>
+            <span>Central de Ajuda</span><i class="fa-solid fa-chevron-right pf-chevron"></i>
           </a>
 
           <a class="pf-link" href="{{ url_for('admin') }}">
             <i class="fa-solid fa-shield-halved"></i>
-            <span>Admin</span>
+            <span>Admin</span><i class="fa-solid fa-chevron-right pf-chevron"></i>
           </a>
 
           <div class="pf-divider"></div>
 
           <a class="pf-link danger" href="{{ url_for('logout') }}">
             <i class="fa-solid fa-right-from-bracket"></i>
-            <span>Sair</span>
+            <span>Sair</span><i class="fa-solid fa-chevron-right pf-chevron"></i>
           </a>
         {% else %}
           <a class="pf-link" href="{{ url_for('login') }}">Entrar</a>
@@ -190,6 +194,16 @@
     const updateNav = () => nav.classList.toggle('is-scrolled', window.scrollY > 24);
     updateNav();
     window.addEventListener('scroll', updateNav, { passive:true });
+  })();
+
+  (function(){
+    const dropdown = document.querySelector('.profile-dropdown');
+    const button = document.querySelector('.profile-button');
+    const close = document.querySelector('.pf-close');
+    if(!dropdown || !button) return;
+    button.addEventListener('click', (e) => { e.stopPropagation(); dropdown.classList.toggle('menu-open'); });
+    if(close) close.addEventListener('click', (e) => { e.stopPropagation(); dropdown.classList.remove('menu-open'); });
+    document.addEventListener('click', (e) => { if(!dropdown.contains(e.target)) dropdown.classList.remove('menu-open'); });
   })();
 </script>
 
