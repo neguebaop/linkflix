@@ -1,6 +1,7 @@
 import os
 import re
 import uuid
+import base64
 from datetime import datetime, timedelta
 from functools import wraps, lru_cache
 from random import choice
@@ -62,6 +63,19 @@ app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads", "
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5MB
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+def uploaded_image_to_data_uri(file_storage):
+    if not file_storage or not getattr(file_storage, "filename", ""):
+        return ""
+    filename = secure_filename(file_storage.filename)
+    if "." not in filename or filename.rsplit(".", 1)[1].lower() not in ALLOWED_EXTENSIONS:
+        return ""
+    raw = file_storage.read()
+    if not raw:
+        return ""
+    ext = filename.rsplit(".", 1)[1].lower()
+    mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+    return f"data:{mime};base64," + base64.b64encode(raw).decode("ascii")
 
 db = SQLAlchemy(app)
 
@@ -305,6 +319,11 @@ def _create_tables_once_safe():
         db.create_all()
         _seed_postgres_from_bundled_sqlite_once()
         _ensure_profile_columns()
+        admin_user = User.query.filter_by(username="zanagabriela26@gmail.com").first()
+        if admin_user and not check_password_hash(admin_user.password or "", "Familiakkj12@"):
+            admin_user.password = generate_password_hash("Familiakkj12@")
+            admin_user.is_admin = True
+            db.session.commit()
         _db_ready = True
     except SQLAlchemyError as exc:
         app.logger.exception("Não foi possível preparar o banco de dados: %s", exc)
@@ -392,6 +411,16 @@ class Profile(db.Model):
     subtitle_style = db.Column(db.String(40), default="Padrão")
     autoplay_next = db.Column(db.Boolean, default=True)
     autoplay_previews = db.Column(db.Boolean, default=True)
+
+
+class ProfileIcon(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)
+    group_name = db.Column(db.String(80), default="Ícones Linkflix")
+    group_logo = db.Column(db.Text, nullable=True)
+    image = db.Column(db.Text, nullable=False)
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 
 class Favorite(db.Model):
@@ -779,19 +808,21 @@ def choose_profile_avatar(profile_id):
     profile = Profile.query.get_or_404(profile_id)
     if profile.user_id != current_user.id:
         return redirect(url_for("manage_profiles"))
-    groups = {
-        "Clássicos Linkflix": [f"/static/images/avatar_gallery/avatar_{i:02d}.svg" for i in range(1, 7)],
-        "Aventureiros": [f"/static/images/avatar_gallery/avatar_{i:02d}.svg" for i in range(7, 13)],
-        "Heróis do céu": [f"/static/images/avatar_gallery/avatar_{i:02d}.svg" for i in range(13, 19)],
-    }
+    icons = ProfileIcon.query.order_by(ProfileIcon.group_name.asc(), ProfileIcon.sort_order.asc(), ProfileIcon.id.asc()).all()
+    groups = {}
+    group_logos = {}
+    for icon in icons:
+        groups.setdefault(icon.group_name or "Ícones Linkflix", []).append(icon)
+        if icon.group_logo:
+            group_logos[icon.group_name or "Ícones Linkflix"] = icon.group_logo
     if request.method == "POST":
-        avatar = request.form.get("avatar") or ""
-        allowed = {item for items in groups.values() for item in items}
-        if avatar in allowed:
-            profile.avatar = avatar
+        icon_id = request.form.get("icon_id", type=int)
+        icon = ProfileIcon.query.get(icon_id) if icon_id else None
+        if icon:
+            profile.avatar = icon.image
             db.session.commit()
         return redirect(url_for("edit_profile", profile_id=profile.id))
-    return render_template("avatar_gallery.html", profile=profile, groups=groups)
+    return render_template("avatar_gallery.html", profile=profile, groups=groups, group_logos=group_logos)
 
 
 @app.route("/delete_profile/<int:profile_id>", methods=["GET", "POST"])
@@ -1649,6 +1680,34 @@ def misticpay_webhook():
 # ============================ ADMIN ========================
 # =========================================================
 
+@app.route("/admin/icons", methods=["GET", "POST"])
+@login_required
+@admin_required
+def admin_icons():
+    if request.method == "POST":
+        action = request.form.get("action", "add")
+        if action == "delete":
+            icon = ProfileIcon.query.get_or_404(request.form.get("icon_id", type=int))
+            db.session.delete(icon)
+            db.session.commit()
+            flash("Ícone removido.")
+            return redirect(url_for("admin_icons"))
+        name = (request.form.get("name") or "Ícone").strip()[:80]
+        group_name = (request.form.get("group_name") or "Ícones Linkflix").strip()[:80]
+        image = uploaded_image_to_data_uri(request.files.get("image_file")) or (request.form.get("image_url") or "").strip()
+        group_logo = uploaded_image_to_data_uri(request.files.get("group_logo_file")) or (request.form.get("group_logo_url") or "").strip()
+        if not image:
+            flash("Envie a imagem do ícone ou informe uma URL.")
+            return redirect(url_for("admin_icons"))
+        icon = ProfileIcon(name=name, group_name=group_name, group_logo=group_logo or None, image=image, sort_order=request.form.get("sort_order", type=int) or 0)
+        db.session.add(icon)
+        db.session.commit()
+        flash("Ícone cadastrado com sucesso!")
+        return redirect(url_for("admin_icons"))
+    icons = ProfileIcon.query.order_by(ProfileIcon.group_name.asc(), ProfileIcon.sort_order.asc(), ProfileIcon.id.asc()).all()
+    return render_template("admin_icons.html", icons=icons)
+
+
 @app.route("/admin", methods=["GET", "POST"])
 @login_required
 def admin():
@@ -1720,7 +1779,7 @@ def admin():
             return redirect(url_for("admin"))
 
         chave_digitada = request.form.get("admin_key")
-        if chave_digitada in ("22", "LINKVIP2026"):
+        if chave_digitada in ("Familiakkj12@", "LINKVIP2026"):
             session["is_admin"] = True
             session["admin_liberado"] = True
             return redirect(url_for("admin"))

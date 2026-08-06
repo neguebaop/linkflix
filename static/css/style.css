@@ -2140,3 +2140,16 @@ body:has(.browse-hero-shell) .browse-featured .featured-info{
  .pf-name{max-width:calc(100vw - 205px)!important}
  .pf-menu-head{position:sticky;top:0;z-index:3;background:#09090b}
 }
+
+/* ===== Linkflix V25: menu de perfil clean ===== */
+.profile-menu{
+  width:330px!important;right:0!important;top:calc(100% + 8px)!important;
+  border:1px solid rgba(255,255,255,.13)!important;border-radius:14px!important;
+  background:rgba(8,8,9,.985)!important;box-shadow:0 22px 55px rgba(0,0,0,.78)!important;
+  overflow:hidden!important;
+}
+.pf-menu-head{height:58px!important;justify-content:center!important;padding:0 48px!important;background:#080809!important;border-bottom:1px solid rgba(255,255,255,.08)!important;position:relative}
+.pf-brand{font-size:19px!important;letter-spacing:-.5px!important;text-shadow:none!important}.pf-brand-l{font-size:25px!important;margin-right:7px!important;text-shadow:none!important}.pf-close{position:absolute;right:10px;top:10px;width:36px!important;height:36px!important}
+.pf-list{padding:10px!important;gap:5px!important}.pf-item{height:60px!important;border:0!important;background:transparent!important;border-radius:9px!important;box-shadow:none!important;padding:0 6px!important}.pf-item:hover{background:rgba(255,255,255,.06)!important;transform:none!important;box-shadow:none!important}.pf-switch{gap:11px!important}.pf-avatar{width:42px!important;height:42px!important;flex-basis:42px!important;border:0!important;border-radius:8px!important;box-shadow:none!important}.pf-name{font-size:14px!important;max-width:165px!important}.pf-active{font-size:18px!important;text-shadow:none!important}.pf-edit{width:38px!important;height:38px!important;flex-basis:38px!important;border:1px solid rgba(255,255,255,.13)!important;color:#fff!important;background:transparent!important}.pf-edit:hover{background:rgba(255,255,255,.08)!important;box-shadow:none!important;transform:none!important}
+.pf-divider{margin:0 12px!important;background:rgba(255,255,255,.09)!important}.pf-link{margin:0 10px!important;padding:11px 10px!important;min-height:45px!important;font-size:14px!important;border-radius:8px!important}.pf-link i:first-child{font-size:16px!important;color:#ddd!important}.pf-link:hover{background:rgba(255,255,255,.06)!important;transform:none!important}.pf-link.danger{margin:9px 10px 12px!important;border:1px solid rgba(255,255,255,.12)!important;background:transparent!important}.pf-link.danger:hover{background:rgba(255,255,255,.06)!important;box-shadow:none!important}
+@media(max-width:520px){.profile-menu{top:7px!important;left:12px!important;right:12px!important;width:auto!important;max-height:calc(100vh - 14px)!important;border-radius:14px!important}.pf-name{max-width:calc(100vw - 185px)!important}}
