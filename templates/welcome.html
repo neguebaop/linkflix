@@ -3,77 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
   <title>Linkflix</title>
   <style>
     * { box-sizing: border-box; }
     html, body { width: 100%; height: 100%; margin: 0; background: #000; overflow: hidden; }
     body { font-family: Arial, Helvetica, sans-serif; }
-    .splash {
-      position: fixed; inset: 0;
-      display: grid; place-items: center;
-      background: #000;
-      opacity: 1;
-      transition: opacity .55s ease;
-    }
-    .splash::after {
-      content: "";
-      position: absolute; inset: 0;
-      background: radial-gradient(circle at center, rgba(229,9,20,.10), transparent 45%, rgba(0,0,0,.28) 100%);
-      pointer-events: none;
-    }
-    .art {
-      width: 100%; height: 100%;
-      object-fit: cover;
-      object-position: center;
-      transform: scale(1.025);
-      opacity: 0;
-      animation: reveal .75s ease forwards, breathe 2.2s ease-in-out .75s infinite alternate;
-    }
-    .progress {
-      position: absolute;
-      left: 10%; right: 10%; bottom: max(26px, env(safe-area-inset-bottom));
-      height: 3px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.13);
-      overflow: hidden;
-      z-index: 2;
-    }
-    .progress span {
-      display: block; height: 100%; width: 0;
-      background: #e50914;
-      box-shadow: 0 0 14px rgba(229,9,20,.9);
-      animation: load 2.45s cubic-bezier(.2,.75,.2,1) forwards;
-    }
-    @keyframes reveal { to { opacity: 1; transform: scale(1); } }
-    @keyframes breathe { from { filter: brightness(.94); } to { filter: brightness(1.08); } }
-    @keyframes load { to { width: 100%; } }
-    @media (min-aspect-ratio: 3/4) {
-      .art { object-fit: contain; background: #000; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .art { animation: none; opacity: 1; transform: none; }
-      .progress span { animation-duration: .8s; }
-    }
+    .splash { position: fixed; inset: 0; display: grid; place-items: center; background: #000; opacity: 1; transition: opacity .42s ease; }
+    .splash::after { content:""; position:absolute; inset:0; background:radial-gradient(circle at center,rgba(229,9,20,.08),transparent 48%,rgba(0,0,0,.25)); pointer-events:none; }
+    .art { width:100%; height:100%; object-fit:cover; object-position:center; opacity:0; transform:scale(1.015); animation:reveal .6s ease forwards; }
+    .progress { position:absolute; left:12%; right:12%; bottom:max(24px,env(safe-area-inset-bottom)); height:3px; border-radius:999px; background:rgba(255,255,255,.12); overflow:hidden; z-index:2; }
+    .progress span { display:block; height:100%; width:0; background:#e50914; box-shadow:0 0 12px rgba(229,9,20,.8); animation:load 1.75s cubic-bezier(.2,.75,.2,1) forwards; }
+    @keyframes reveal { to { opacity:1; transform:scale(1); } }
+    @keyframes load { to { width:100%; } }
+    @media (min-width: 769px) { .splash { display:none; } }
+    @media (prefers-reduced-motion: reduce) { .art { animation:none; opacity:1; transform:none; } .progress span { animation-duration:.6s; } }
   </style>
 </head>
 <body>
   <main class="splash" id="splash" aria-label="Carregando Linkflix">
-    <img class="art" src="{{ url_for('static', filename='images/linkflix_splash.png') }}" alt="Linkflix — Seu mundo, sem limites">
+    <img class="art" src="{{ url_for('static', filename='images/linkflix_splash.png') }}?v=19" alt="Linkflix">
     <div class="progress" aria-hidden="true"><span></span></div>
   </main>
   <script>
     (function () {
       const destination = {{ url_for('select_profile_page')|tojson }};
+      const isMobile = window.matchMedia('(max-width: 768px)').matches || /Android|iPhone|iPad|iPod|Mobile|wv/i.test(navigator.userAgent);
+      if (!isMobile) {
+        window.location.replace(destination);
+        return;
+      }
       const splash = document.getElementById('splash');
       let redirected = false;
       function go() {
         if (redirected) return;
         redirected = true;
         splash.style.opacity = '0';
-        setTimeout(() => window.location.replace(destination), 540);
+        setTimeout(() => window.location.replace(destination), 420);
       }
-      setTimeout(go, 2600);
-      document.addEventListener('click', () => setTimeout(go, 250), { once: true });
+      setTimeout(go, 1900);
     })();
   </script>
 </body>

@@ -528,26 +528,24 @@ def normalize_plan_before_request():
         db.session.rollback()
 
 
+def is_mobile_client():
+    ua = (request.headers.get("User-Agent") or "").lower()
+    mobile_tokens = ("android", "iphone", "ipad", "ipod", "mobile", "webview", "wv")
+    return any(token in ua for token in mobile_tokens)
+
+
 # =========================================================
 # ========================== INDEX ==========================
 # =========================================================
 
 @app.route("/")
 def index():
-    # Quem já está autenticado não precisa fazer login novamente,
-    # mas sempre escolhe o perfil ao abrir uma nova sessão do site/app.
     if current_user.is_authenticated:
+        # Cada nova abertura do site/app começa pela escolha de perfil.
         session.pop("active_profile", None)
-        return redirect(url_for("welcome_after_login"))
-    return redirect(url_for("login"))
-
-
-@app.route("/start")
-def app_start():
-    # Entrada exclusiva do PWA/app instalado.
-    if current_user.is_authenticated:
-        session.pop("active_profile", None)
-        return redirect(url_for("welcome_after_login"))
+        if is_mobile_client():
+            return redirect(url_for("welcome_after_login"))
+        return redirect(url_for("select_profile_page"))
     return redirect(url_for("login"))
 
 
@@ -564,10 +562,14 @@ def login():
 
         user = User.query.filter_by(username=email).first()
         if user and check_password_hash(user.password, password):
-            login_user(user, remember=True)
+            login_user(user)
             session["user_id"] = user.id
             session.pop("active_profile", None)
-            return redirect(url_for("welcome_after_login"))
+            # No PC vai direto para a escolha de perfil.
+            # No celular mostra a abertura antes da escolha de perfil.
+            if is_mobile_client():
+                return redirect(url_for("welcome_after_login"))
+            return redirect(url_for("select_profile_page"))
         else:
             error = "Email ou senha inválidos"
 
@@ -577,8 +579,10 @@ def login():
 @app.route("/welcome")
 @login_required
 def welcome_after_login():
-    # Tela de abertura exibida sempre após um login bem-sucedido.
+    # Desktop nunca exibe splash: vai direto para a escolha de perfil.
     session.pop("active_profile", None)
+    if not is_mobile_client():
+        return redirect(url_for("select_profile_page"))
     return render_template("welcome.html")
 
 
@@ -640,7 +644,7 @@ def select_profile(profile_id):
         return redirect(url_for("select_profile_page"))
 
     session["active_profile"] = profile.id
-    return redirect(url_for("home", profile_selected=1))
+    return redirect(url_for("home"))
 
 
 @app.route("/manage_profiles")

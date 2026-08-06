@@ -41,7 +41,7 @@
       if (!("serviceWorker" in navigator)) return;
 
       window.addEventListener("load", function () {
-        navigator.serviceWorker.register("{{ url_for('static', filename='service-worker.js') }}?v=18", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("{{ url_for('static', filename='service-worker.js') }}")
           .catch(function (err) {
             console.log("SW register failed:", err);
           });
