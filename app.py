@@ -310,6 +310,27 @@ def _ensure_profile_columns():
     db.session.commit()
 
 
+def _ensure_profile_icon_columns():
+    """Atualiza a tabela de ícones em bancos existentes sem apagar registros."""
+    inspector = inspect(db.engine)
+    if "profile_icon" not in inspector.get_table_names():
+        return
+    existing = {c["name"] for c in inspector.get_columns("profile_icon")}
+    columns = {
+        "name": "VARCHAR(80) DEFAULT 'Ícone'",
+        "group_name": "VARCHAR(80) DEFAULT 'Ícones Linkflix'",
+        "group_logo": "TEXT",
+        "logo_size": "INTEGER DEFAULT 54",
+        "image": "TEXT",
+        "sort_order": "INTEGER DEFAULT 0",
+        "created_at": "TIMESTAMP",
+    }
+    for name, sql_type in columns.items():
+        if name not in existing:
+            db.session.execute(text(f'ALTER TABLE "profile_icon" ADD COLUMN "{name}" {sql_type}'))
+    db.session.commit()
+
+
 @app.before_request
 def _create_tables_once_safe():
     global _db_ready
@@ -319,6 +340,7 @@ def _create_tables_once_safe():
         db.create_all()
         _seed_postgres_from_bundled_sqlite_once()
         _ensure_profile_columns()
+        _ensure_profile_icon_columns()
         admin_user = User.query.filter_by(username="zanagabriela26@gmail.com").first()
         if admin_user and not check_password_hash(admin_user.password or "", "Familiakkj12@"):
             admin_user.password = generate_password_hash("Familiakkj12@")
@@ -418,6 +440,7 @@ class ProfileIcon(db.Model):
     name = db.Column(db.String(80), nullable=False)
     group_name = db.Column(db.String(80), default="Ícones Linkflix")
     group_logo = db.Column(db.Text, nullable=True)
+    logo_size = db.Column(db.Integer, default=54)
     image = db.Column(db.Text, nullable=False)
     sort_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -705,22 +728,19 @@ def select_profile(profile_id):
     if profile.user_id != current_user.id:
         return redirect(url_for("select_profile_page"))
 
+    # Perfis protegidos sempre pedem o PIN em cada entrada.
+    # Não guardamos desbloqueio na sessão para evitar acesso sem confirmação.
     if profile.pin_hash:
-        unlocked = set(session.get("unlocked_profiles", []))
-        if profile.id not in unlocked:
-            error = None
-            if request.method == "POST":
-                pin = (request.form.get("pin") or "").strip()
-                if not pin:
-                    pin = "".join((request.form.get(f"d{i}") or "") for i in range(1, 5))
-                if len(pin) == 4 and pin.isdigit() and check_password_hash(profile.pin_hash, pin):
-                    unlocked.add(profile.id)
-                    session["unlocked_profiles"] = list(unlocked)
-                else:
-                    error = "PIN incorreto. Digite os 4 números do perfil."
-                    return render_template("profile_pin.html", profile=profile, error=error)
-            else:
+        error = None
+        if request.method == "POST":
+            pin = (request.form.get("pin") or "").strip()
+            if not pin:
+                pin = "".join((request.form.get(f"d{i}") or "") for i in range(1, 5))
+            if not (len(pin) == 4 and pin.isdigit() and check_password_hash(profile.pin_hash, pin)):
+                error = "PIN incorreto. Digite os 4 números do perfil."
                 return render_template("profile_pin.html", profile=profile, error=error)
+        else:
+            return render_template("profile_pin.html", profile=profile, error=error)
 
     session["active_profile"] = profile.id
     return redirect(url_for("home"))
@@ -811,18 +831,26 @@ def choose_profile_avatar(profile_id):
     icons = ProfileIcon.query.order_by(ProfileIcon.group_name.asc(), ProfileIcon.sort_order.asc(), ProfileIcon.id.asc()).all()
     groups = {}
     group_logos = {}
+    group_logo_sizes = {}
     for icon in icons:
-        groups.setdefault(icon.group_name or "Ícones Linkflix", []).append(icon)
+        group = (icon.group_name or "Ícones Linkflix").strip() or "Ícones Linkflix"
+        if not icon.image:
+            continue
+        groups.setdefault(group, []).append(icon)
         if icon.group_logo:
-            group_logos[icon.group_name or "Ícones Linkflix"] = icon.group_logo
+            group_logos[group] = icon.group_logo
+        group_logo_sizes[group] = max(24, min(int(icon.logo_size or 54), 180))
     if request.method == "POST":
         icon_id = request.form.get("icon_id", type=int)
-        icon = ProfileIcon.query.get(icon_id) if icon_id else None
-        if icon:
-            profile.avatar = icon.image
-            db.session.commit()
+        icon = ProfileIcon.query.filter_by(id=icon_id).first() if icon_id else None
+        if not icon or not icon.image:
+            flash("Esse ícone não está mais disponível.")
+            return redirect(url_for("choose_profile_avatar", profile_id=profile.id))
+        profile.avatar = icon.image
+        db.session.commit()
+        flash("Ícone do perfil alterado com sucesso!")
         return redirect(url_for("edit_profile", profile_id=profile.id))
-    return render_template("avatar_gallery.html", profile=profile, groups=groups, group_logos=group_logos)
+    return render_template("avatar_gallery.html", profile=profile, groups=groups, group_logos=group_logos, group_logo_sizes=group_logo_sizes)
 
 
 @app.route("/delete_profile/<int:profile_id>", methods=["GET", "POST"])
@@ -1699,7 +1727,8 @@ def admin_icons():
         if not image:
             flash("Envie a imagem do ícone ou informe uma URL.")
             return redirect(url_for("admin_icons"))
-        icon = ProfileIcon(name=name, group_name=group_name, group_logo=group_logo or None, image=image, sort_order=request.form.get("sort_order", type=int) or 0)
+        logo_size = max(24, min(request.form.get("logo_size", type=int) or 54, 180))
+        icon = ProfileIcon(name=name, group_name=group_name, group_logo=group_logo or None, logo_size=logo_size, image=image, sort_order=request.form.get("sort_order", type=int) or 0)
         db.session.add(icon)
         db.session.commit()
         flash("Ícone cadastrado com sucesso!")
