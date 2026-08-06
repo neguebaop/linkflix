@@ -131,6 +131,23 @@
             const trailer = await getTrailer(hero.dataset.contentId);
             mountTrailer(hero.querySelector('.featured-video'), trailer);
         }, 1700);
+
+        // Navegadores bloqueiam autoplay com áudio. No primeiro clique/toque/tecla,
+        // libera o som do trailer principal sem mostrar um ícone de mudo.
+        const enableHeroSound = () => {
+            const frame = hero.querySelector('.featured-video iframe');
+            if (frame && frame.contentWindow) {
+                frame.contentWindow.postMessage(JSON.stringify({
+                    event: 'command', func: 'unMute', args: []
+                }), '*');
+                frame.contentWindow.postMessage(JSON.stringify({
+                    event: 'command', func: 'setVolume', args: [70]
+                }), '*');
+            }
+        };
+        ['pointerdown','keydown'].forEach(evt =>
+            window.addEventListener(evt, enableHeroSound, {once:true, passive:true})
+        );
     }
     </script>
 
@@ -159,7 +176,6 @@
                 <a href="{{ url_for('watch', id=featured_content.id) }}" class="btn-info">ⓘ Mais informações</a>
             </div>
         </div>
-        <button class="featured-mute" type="button" aria-label="Ativar ou desativar som">🔇</button>
     </section>
     {% endif %}
 
@@ -217,49 +233,48 @@
     </div>
     {% endmacro %}
 
-    <h2 class="section-title">Continuar assistindo</h2>
-    <div class="row-wrapper home-row-wrapper">
-        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
-        <div class="row">
-            {% for movie in continuar %}
-                {{ card(movie, True) }}
-            {% endfor %}
-        </div>
-        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
-    </div>
+    {% if continuar %}
+    <section class="catalog-shelf continue-shelf">
+      <h2 class="section-title">Continuar assistindo</h2>
+      <div class="row-wrapper home-row-wrapper">
+          <button class="arrow left" type="button" onclick="scrollRow(this, -1)" aria-label="Voltar">❮</button>
+          <div class="row">
+              {% for movie in continuar %}{{ card(movie, True) }}{% endfor %}
+          </div>
+          <button class="arrow right" type="button" onclick="scrollRow(this, 1)" aria-label="Avançar">❯</button>
+      </div>
+    </section>
+    {% endif %}
 
-    <h2 class="section-title">Filmes</h2>
-    <div class="row-wrapper home-row-wrapper">
-        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
-        <div class="row">
-            {% for movie in filmes %}
-                {{ card(movie) }}
-            {% endfor %}
+    {% set base_shelves = [
+      ('Filmes', filmes),
+      ('Filmes de Ação', acao),
+      ('Animes', anime),
+      ('Séries', series)
+    ] %}
+    {% for shelf_title, shelf_items in base_shelves %}
+      {% if shelf_items %}
+      <section class="catalog-shelf">
+        <h2 class="section-title">{{ shelf_title }}</h2>
+        <div class="row-wrapper home-row-wrapper">
+            <button class="arrow left" type="button" onclick="scrollRow(this, -1)" aria-label="Voltar">❮</button>
+            <div class="row">{% for movie in shelf_items %}{{ card(movie) }}{% endfor %}</div>
+            <button class="arrow right" type="button" onclick="scrollRow(this, 1)" aria-label="Avançar">❯</button>
         </div>
-        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
-    </div>
+      </section>
+      {% endif %}
+    {% endfor %}
 
-    <h2 class="section-title">Filmes de Ação</h2>
-    <div class="row-wrapper home-row-wrapper">
-        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
-        <div class="row">
-            {% for movie in acao %}
-                {{ card(movie) }}
-            {% endfor %}
-        </div>
-        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
-    </div>
-
-    <h2 class="section-title">Animes</h2>
-    <div class="row-wrapper home-row-wrapper">
-        <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
-        <div class="row">
-            {% for movie in anime %}
-                {{ card(movie) }}
-            {% endfor %}
-        </div>
-        <button class="arrow right" type="button" onclick="scrollRow(this, 1)">❯</button>
-    </div>
+    {% for shelf in shelf_rows %}
+    <section class="catalog-shelf">
+      <h2 class="section-title">{{ shelf.title }}</h2>
+      <div class="row-wrapper home-row-wrapper">
+          <button class="arrow left" type="button" onclick="scrollRow(this, -1)" aria-label="Voltar">❮</button>
+          <div class="row">{% for movie in shelf.items %}{{ card(movie) }}{% endfor %}</div>
+          <button class="arrow right" type="button" onclick="scrollRow(this, 1)" aria-label="Avançar">❯</button>
+      </div>
+    </section>
+    {% endfor %}
 
     <script>
     function scrollRow(button, direction) {
@@ -312,6 +327,23 @@
             const trailer = await getTrailer(hero.dataset.contentId);
             mountTrailer(hero.querySelector('.featured-video'), trailer);
         }, 1700);
+
+        // Navegadores bloqueiam autoplay com áudio. No primeiro clique/toque/tecla,
+        // libera o som do trailer principal sem mostrar um ícone de mudo.
+        const enableHeroSound = () => {
+            const frame = hero.querySelector('.featured-video iframe');
+            if (frame && frame.contentWindow) {
+                frame.contentWindow.postMessage(JSON.stringify({
+                    event: 'command', func: 'unMute', args: []
+                }), '*');
+                frame.contentWindow.postMessage(JSON.stringify({
+                    event: 'command', func: 'setVolume', args: [70]
+                }), '*');
+            }
+        };
+        ['pointerdown','keydown'].forEach(evt =>
+            window.addEventListener(evt, enableHeroSound, {once:true, passive:true})
+        );
     }
     </script>
 

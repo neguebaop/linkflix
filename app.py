@@ -810,7 +810,7 @@ def content_trailer(content_id):
         "ok": True,
         "trailer": {
             "key": key,
-            "embed_url": f"https://www.youtube-nocookie.com/embed/{key}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist={key}"
+            "embed_url": f"https://www.youtube-nocookie.com/embed/{key}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist={key}&enablejsapi=1"
         }
     })
 
@@ -858,6 +858,61 @@ def home():
     filmes = Content.query.filter(Content.content_type.ilike("%film%")).all()
     series = Content.query.filter(Content.content_type.ilike("%ser%")).all()
 
+    # Prateleiras personalizadas no estilo streaming. O administrador pode
+    # marcar qualquer título em uma ou mais destas categorias extras.
+    shelf_names = [
+        "Principais escolhas do dia para você",
+        "Séries dos EUA dubladas em português",
+        "Filmes que pedem uma pipoquinha",
+        "Descubra suas próximas histórias",
+        "Porque você viu O Homem do Norte",
+        "Séries cômicas",
+        "Assistir novamente",
+        "Novidades na Linkflix",
+        "Nostalgia millennial",
+        "Títulos para toda a família",
+        "Água, Terra, Fogo, Ar",
+        "Principais buscas",
+        "Brasil: top 10 em séries hoje",
+        "Queria esquecer só para assistir de novo",
+        "Experimente a emoção",
+        "Para a sua criança interior",
+        "Brasil: top 10 em filmes hoje",
+        "Sugestões que você vai adorar",
+        "Minha lista",
+        "Com pressa? Sucessos com menos de 30 minutos",
+        "Das páginas para as telas",
+        "Filmes de comédia",
+        "Comédias hollywoodianas",
+        "Só na Linkflix",
+        "Chega de tédio",
+        "A fim de dar risada?",
+        "Assistimos e não julgamos",
+        "Séries empolgantes",
+        "Séries aclamadas pela crítica",
+        "Séries favoritas da família",
+        "Criminosos implacáveis – Séries",
+        "Indicados ao Emmy® 2026",
+        "No lindo mundo da imaginação",
+        "Séries com mulheres fortes",
+    ]
+
+    all_for_shelves = Content.query.order_by(Content.id.desc()).all()
+
+    def content_category_names(item):
+        names = []
+        if item.category:
+            names.extend(part.strip() for part in item.category.split(",") if part.strip())
+        names.extend(cat.name.strip() for cat in item.extra_categories if cat.name and cat.name.strip())
+        return {name.casefold() for name in names}
+
+    shelf_rows = []
+    for shelf_name in shelf_names:
+        key = shelf_name.casefold()
+        items = [item for item in all_for_shelves if key in content_category_names(item)]
+        if items:
+            shelf_rows.append({"title": shelf_name, "items": items})
+
     profile_id = session.get("active_profile")
     favs = Favorite.query.filter_by(profile_id=profile_id).all() if profile_id else []
     favorite_ids = {f.content_id for f in favs}
@@ -902,6 +957,8 @@ def home():
         filmes=filmes,
         favorite_ids=favorite_ids,
         progress_map=progress_map,
+        shelf_rows=shelf_rows,
+        shelf_names=shelf_names,
         search=search,
         search_results=search_results
     )

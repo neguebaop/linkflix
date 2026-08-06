@@ -1714,3 +1714,35 @@ body{ background:linear-gradient(180deg,#07100f 0,#141414 19rem,#141414 100%); }
   .featured-kicker,.featured-meta,.featured-mute{ display:none; }
   .home-row-wrapper .movie-card{ min-width:235px; height:132px; }
 }
+
+
+/* LINKFLIX V7 — acabamento das prateleiras e hover limpo */
+body{ background:#141414 !important; }
+.featured-mute{ display:none !important; }
+.catalog-shelf{ position:relative; overflow:visible; }
+.nx-shelf-chips{ display:flex; gap:8px; flex-wrap:wrap; max-height:230px; overflow:auto; padding:4px 2px; }
+
+.home-row-wrapper .arrow{
+  width:52px !important;
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  font-size:34px !important;
+  text-shadow:0 2px 8px rgba(0,0,0,.95);
+  opacity:0;
+}
+.home-row-wrapper:hover .arrow{ opacity:.95; }
+.home-row-wrapper .arrow:hover{ background:transparent !important; transform:scale(1.14); }
+
+@media (hover:hover) and (pointer:fine){
+  .movie-card:hover,
+  .movie-card:hover .card-overlay{
+    box-shadow:none !important;
+    outline:0 !important;
+    border:0 !important;
+  }
+  .home-row-wrapper .movie-card:hover{ transform:translateY(-15px) scale(1.26); }
+}
+
+.continue-shelf .row:empty,
+.continue-shelf:has(.row:empty){ display:none; }

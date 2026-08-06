@@ -93,9 +93,36 @@
             </div>
 
             <div class="nx-field">
+              <label>Prateleiras da tela inicial</label>
+              <div id="shelfChips" class="nx-shelf-chips">
+                {% set shelf_chips = [
+                  "Principais escolhas do dia para você", "Séries dos EUA dubladas em português",
+                  "Filmes que pedem uma pipoquinha", "Descubra suas próximas histórias",
+                  "Porque você viu O Homem do Norte", "Séries cômicas", "Assistir novamente",
+                  "Novidades na Linkflix", "Nostalgia millennial", "Títulos para toda a família",
+                  "Água, Terra, Fogo, Ar", "Principais buscas", "Brasil: top 10 em séries hoje",
+                  "Queria esquecer só para assistir de novo", "Experimente a emoção",
+                  "Para a sua criança interior", "Brasil: top 10 em filmes hoje",
+                  "Sugestões que você vai adorar", "Minha lista",
+                  "Com pressa? Sucessos com menos de 30 minutos", "Das páginas para as telas",
+                  "Filmes de comédia", "Comédias hollywoodianas", "Só na Linkflix",
+                  "Chega de tédio", "A fim de dar risada?", "Assistimos e não julgamos",
+                  "Séries empolgantes", "Séries aclamadas pela crítica",
+                  "Séries favoritas da família", "Criminosos implacáveis – Séries",
+                  "Indicados ao Emmy® 2026", "No lindo mundo da imaginação",
+                  "Séries com mulheres fortes"
+                ] %}
+                {% for shelf in shelf_chips %}
+                  <button type="button" class="nx-pill" onclick='addShelfToExtras({{ shelf|tojson }})'>{{ shelf }}</button>
+                {% endfor %}
+              </div>
+              <div class="nx-help">Clique em uma ou mais prateleiras. O título aparecerá automaticamente nelas na Home.</div>
+            </div>
+
+            <div class="nx-field">
               <label>Categorias extras</label>
               <input id="fExtra" class="nx-input" name="extra_categories" placeholder="Ex: Infantil, Comédia, Terror">
-              <div class="nx-help">Dica: aqui você pode colocar “Kids, Desenhos, Anime…”</div>
+              <div class="nx-help">Você também pode digitar nomes separados por vírgula.</div>
             </div>
 
             <label style="display:flex; gap:10px; align-items:center;">
@@ -185,6 +212,14 @@
     if(!lower.includes(genre.toLowerCase())){
       parts.push(genre);
     }
+    input.value = parts.join(', ');
+  }
+
+  function addShelfToExtras(shelf){
+    const input = document.getElementById('fExtra');
+    if(!input) return;
+    const parts = (input.value || '').split(',').map(s => s.trim()).filter(Boolean);
+    if(!parts.some(p => p.toLowerCase() === shelf.toLowerCase())) parts.push(shelf);
     input.value = parts.join(', ');
   }
 
