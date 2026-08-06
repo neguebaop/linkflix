@@ -562,7 +562,8 @@ def login():
 
         user = User.query.filter_by(username=email).first()
         if user and check_password_hash(user.password, password):
-            login_user(user)
+            remember = request.form.get("remember") == "1"
+            login_user(user, remember=remember, duration=timedelta(days=30))
             session["user_id"] = user.id
             session.pop("active_profile", None)
             # No PC vai direto para a escolha de perfil.
@@ -1590,6 +1591,19 @@ def admin():
 
             if not title or not image:
                 flash("Preencha pelo menos Título e Imagem.")
+                return redirect(url_for("admin"))
+
+            # Impede conteúdo repetido: primeiro pelo TMDB ID, depois por título/tipo.
+            duplicate = None
+            if tmdb_id:
+                duplicate = Content.query.filter_by(tmdb_id=tmdb_id).first()
+            if duplicate is None:
+                duplicate = Content.query.filter(
+                    db.func.lower(db.func.trim(Content.title)) == title.strip().lower(),
+                    db.func.lower(db.func.trim(Content.content_type)) == content_type.strip().lower()
+                ).first()
+            if duplicate:
+                flash(f'Esse conteúdo já foi adicionado: "{duplicate.title}".')
                 return redirect(url_for("admin"))
 
             new_content = Content(
