@@ -2000,3 +2000,74 @@ body:has(.browse-hero-shell) .browse-featured .featured-info{
   body:has(.browse-hero-shell) .browse-featured{ height:68vh !important; min-height:500px !important; }
   body:has(.browse-hero-shell) .browse-top-over-hero{ top:88px !important; left:18px !important; }
 }
+
+/* =========================================================
+   LINKFLIX V16 — prateleiras compactas + trailer cobrindo o preview
+   ========================================================= */
+/* Aproxima as categorias, eliminando os grandes vazios verticais. */
+.catalog-shelf{
+  margin-top:0 !important;
+  margin-bottom:14px !important;
+}
+.section-title{
+  margin-top:22px !important;
+  margin-bottom:10px !important;
+  line-height:1.15 !important;
+}
+.home-row-wrapper{
+  margin-top:0 !important;
+  margin-bottom:6px !important;
+}
+.home-row-wrapper .row{
+  min-height:clamp(151px,10vw,181px) !important;
+  padding-top:10px !important;
+  padding-bottom:18px !important;
+  align-items:flex-start !important;
+}
+.continue-shelf .home-row-wrapper .row{
+  padding-bottom:20px !important;
+}
+
+/* O trailer preenche toda a área superior do card expandido, sem faixas pretas. */
+.hover-floating-preview .card-media,
+.hover-floating-preview .card-trailer{
+  width:100% !important;
+  height:100% !important;
+  background:#000 !important;
+  overflow:hidden !important;
+}
+.hover-floating-preview .card-trailer iframe{
+  position:absolute !important;
+  top:50% !important;
+  left:50% !important;
+  width:178% !important;
+  height:178% !important;
+  min-width:178% !important;
+  min-height:178% !important;
+  transform:translate(-50%,-50%) !important;
+  border:0 !important;
+  pointer-events:none !important;
+}
+.hover-floating-preview .card-trailer.is-playing{
+  opacity:1 !important;
+}
+.hover-floating-preview .card-trailer.is-playing ~ img,
+.hover-floating-preview .card-trailer.is-playing + img{
+  opacity:0 !important;
+}
+
+/* Também garante cobertura total nos cards das páginas Filmes e Séries. */
+.browse-grid .movie-card .card-trailer iframe{
+  position:absolute !important;
+  top:50% !important;
+  left:50% !important;
+  width:178% !important;
+  height:178% !important;
+  transform:translate(-50%,-50%) !important;
+}
+
+@media(max-width:768px){
+  .section-title{ margin-top:18px !important; margin-bottom:8px !important; }
+  .home-row-wrapper .row{ min-height:136px !important; padding-top:8px !important; padding-bottom:14px !important; }
+  .catalog-shelf{ margin-bottom:10px !important; }
+}
