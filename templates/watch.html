@@ -7,20 +7,40 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <style>
   .watch-player-toolbar {
-    display:flex; justify-content:flex-end; align-items:center; gap:10px;
-    margin:0 0 10px;
+    display:flex; justify-content:flex-end; align-items:center; gap:8px;
+    margin:0 0 8px;
   }
-  .watch-player-shell { position:relative; background:#000; border-radius:14px; overflow:hidden; }
-  .watch-player-shell iframe { display:block; width:100%; min-height:clamp(300px, 62vh, 760px); border:0; }
+  .watch-player-shell {
+    position:relative; background:#000; border-radius:14px; overflow:hidden;
+    width:100%; aspect-ratio:16/9; min-height:320px;
+  }
+  .watch-player-shell iframe { display:block; width:100%; height:100%; min-height:320px; border:0; background:#000; }
   .linkflix-fullscreen-btn {
     position:relative; z-index:100;
     display:inline-flex; align-items:center; gap:8px;
-    border:1px solid rgba(255,255,255,.32); border-radius:10px;
-    padding:10px 14px; color:#fff; background:#e50914;
-    font-weight:800; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,.35);
+    border:1px solid rgba(255,255,255,.24); border-radius:8px;
+    padding:7px 10px; color:#fff; background:#e50914;
+    font-size:13px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.30);
   }
   .linkflix-fullscreen-btn:hover { background:#ff1f2b; transform:translateY(-1px); }
-  .linkflix-fullscreen-btn svg { width:18px; height:18px; fill:currentColor; }
+  .linkflix-fullscreen-btn svg { width:14px; height:14px; fill:currentColor; }
+  .watch-player-shell.cinema-mode {
+    position:fixed; inset:0; z-index:99999; width:100vw; height:100vh;
+    aspect-ratio:auto; min-height:100vh; border-radius:0; background:#000;
+  }
+  .watch-player-shell.cinema-mode iframe { width:100%; height:100%; min-height:100%; }
+  .cinema-exit {
+    display:none; position:absolute; top:12px; right:12px; z-index:100001;
+    border:1px solid rgba(255,255,255,.25); border-radius:8px; padding:7px 10px;
+    background:rgba(0,0,0,.72); color:#fff; font-weight:800; cursor:pointer;
+  }
+  .watch-player-shell.cinema-mode .cinema-exit { display:block; }
+  .player-loading {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#ddd; font-weight:700; background:#000; z-index:2; pointer-events:none;
+    transition:opacity .25s ease;
+  }
+  .player-loading.hidden { opacity:0; visibility:hidden; }
   .watch-player-shell:fullscreen,
   .watch-player-shell:-webkit-full-screen { width:100vw; height:100vh; border-radius:0; background:#000; }
   .watch-player-shell:fullscreen iframe,
@@ -51,14 +71,24 @@
     </div>
 
     <div class="watch-player-shell" id="playerShell">
+      <div class="player-loading" id="playerLoading">Carregando filme...</div>
+      <button type="button" class="cinema-exit" id="cinemaExit">✕ Sair</button>
       {% if not is_series %}
         <iframe id="contentFrame"
-          src="https://playerflixapi.com/filme/{{ content.tmdb_id }}"
+          data-src="https://playerflixapi.com/filme/{{ content.tmdb_id }}"
+          src="about:blank"
+          loading="eager"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock"
+          referrerpolicy="no-referrer"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
           allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true">
         </iframe>
       {% else %}
         <iframe id="seriesFrame"
+          src="about:blank"
+          loading="eager"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock"
+          referrerpolicy="no-referrer"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
           allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true">
         </iframe>
@@ -92,12 +122,46 @@
 <script>
 const playerShell = document.getElementById("playerShell");
 const fullscreenBtn = document.getElementById("fullscreenBtn");
+const cinemaExit = document.getElementById("cinemaExit");
+const playerLoading = document.getElementById("playerLoading");
+const initialFrame = document.getElementById("contentFrame") || document.getElementById("seriesFrame");
+
+function openCinemaMode(){
+  playerShell.classList.add("cinema-mode");
+  document.body.style.overflow = "hidden";
+}
+function closeCinemaMode(){
+  playerShell.classList.remove("cinema-mode");
+  document.body.style.overflow = "";
+}
+cinemaExit.addEventListener("click", closeCinemaMode);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && playerShell.classList.contains("cinema-mode")) closeCinemaMode();
+});
+
+// Carrega o player depois que a página já montou. Isso evita o quadro preto em alguns navegadores.
+window.addEventListener("DOMContentLoaded", () => {
+  if (initialFrame && initialFrame.dataset.src) initialFrame.src = initialFrame.dataset.src;
+
+  // O navegador bloqueia tela cheia real sem clique. Este modo cinema ocupa a tela automaticamente.
+  setTimeout(() => {
+    if (initialFrame && initialFrame.src && initialFrame.src !== "about:blank") openCinemaMode();
+  }, 2200);
+});
+
+if (initialFrame) {
+  initialFrame.addEventListener("load", () => {
+    setTimeout(() => playerLoading.classList.add("hidden"), 500);
+  });
+}
+setTimeout(() => playerLoading.classList.add("hidden"), 10000);
 
 async function toggleFullscreen(){
   const frame = document.getElementById("contentFrame") || document.getElementById("seriesFrame");
   const target = playerShell;
 
   try {
+    closeCinemaMode();
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
       if (target.requestFullscreen) {
         await target.requestFullscreen();
@@ -173,7 +237,10 @@ function loadEpisodes(seasonNumber){
     if (eps.length) loadPlayer(seasonNumber, eps[0].episode_number);
   });
 }
-function loadPlayer(season, episode){ frame.src = `https://playerflixapi.com/serie/${TMDB_ID}/${season}/${episode}`; }
+function loadPlayer(season, episode){
+  playerLoading.classList.remove("hidden");
+  frame.src = `https://playerflixapi.com/serie/${TMDB_ID}/${season}/${episode}`;
+}
 seasonSelect.addEventListener("change", ()=> loadEpisodes(seasonSelect.value));
 episodeSelect.addEventListener("change", ()=> loadPlayer(seasonSelect.value, episodeSelect.value));
 {% endif %}
