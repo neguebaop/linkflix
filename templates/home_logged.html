@@ -64,7 +64,7 @@
     {% endmacro %}
 
     {% if search_results and search_results|length > 0 %}
-      <div class="row-wrapper">
+      <div class="row-wrapper home-row-wrapper">
           <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
           <div class="row">
               {% for movie in search_results %}
@@ -153,7 +153,7 @@
     {% endmacro %}
 
     <h2 class="section-title">Continuar assistindo</h2>
-    <div class="row-wrapper">
+    <div class="row-wrapper home-row-wrapper">
         <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
         <div class="row">
             {% for movie in continuar %}
@@ -164,7 +164,7 @@
     </div>
 
     <h2 class="section-title">Filmes</h2>
-    <div class="row-wrapper">
+    <div class="row-wrapper home-row-wrapper">
         <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
         <div class="row">
             {% for movie in filmes %}
@@ -175,7 +175,7 @@
     </div>
 
     <h2 class="section-title">Filmes de Ação</h2>
-    <div class="row-wrapper">
+    <div class="row-wrapper home-row-wrapper">
         <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
         <div class="row">
             {% for movie in acao %}
@@ -186,7 +186,7 @@
     </div>
 
     <h2 class="section-title">Animes</h2>
-    <div class="row-wrapper">
+    <div class="row-wrapper home-row-wrapper">
         <button class="arrow left" type="button" onclick="scrollRow(this, -1)">❮</button>
         <div class="row">
             {% for movie in anime %}

@@ -1584,3 +1584,48 @@ a:hover{ color: #fff; }
     transform:none !important;
   }
 }
+
+
+/* =========================================================
+   LINKFLIX V5 — CORREÇÃO DO HOVER NA TELA INICIAL
+   A fileira horizontal mantém espaço interno para o card
+   expandir sem cortar a imagem nem o painel de informações.
+   ========================================================= */
+@media (hover:hover) and (pointer:fine) {
+  .home-row-wrapper{
+    overflow:visible;
+    margin-bottom:-128px;
+  }
+
+  .home-row-wrapper .row{
+    box-sizing:border-box;
+    min-height:335px;
+    padding-top:42px;
+    padding-bottom:153px;
+    align-items:flex-start;
+    overflow-x:auto;
+  }
+
+  .home-row-wrapper .movie-card{
+    flex:0 0 250px;
+  }
+
+  .home-row-wrapper .arrow{
+    top:42px;
+    height:140px;
+  }
+
+  .home-row-wrapper .movie-card:hover{
+    transform:translateY(-10px) scale(1.18);
+  }
+}
+
+@media (max-width:760px), (hover:none) {
+  .home-row-wrapper{
+    margin-bottom:0;
+  }
+  .home-row-wrapper .row{
+    min-height:0;
+    padding:25px 0;
+  }
+}
