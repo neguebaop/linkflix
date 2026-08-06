@@ -4,11 +4,30 @@
   <meta charset="UTF-8">
   <title>Linkflix</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}?v=18">
+  <meta name="theme-color" content="#000000">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 </head>
 
 <body>
+
+<script>
+  // Exige uma escolha de perfil uma vez por abertura/aba do site ou app.
+  (function(){
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('profile_selected') === '1') {
+      sessionStorage.setItem('linkflix_profile_selected', '1');
+      params.delete('profile_selected');
+      const clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+      history.replaceState(null, '', clean);
+      return;
+    }
+    if (!sessionStorage.getItem('linkflix_profile_selected')) {
+      window.location.replace({{ url_for('welcome_after_login')|tojson }});
+    }
+  })();
+</script>
 
 <nav class="navbar">
   <div class="nav-left">
@@ -194,6 +213,16 @@
 </script>
 
 
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('/static/service-worker.js?v=18', { updateViaCache: 'none' });
+        await reg.update();
+      } catch (e) { console.log('SW:', e); }
+    });
+  }
+</script>
 
 </body>
 </html>

@@ -534,10 +534,20 @@ def normalize_plan_before_request():
 
 @app.route("/")
 def index():
+    # Quem já está autenticado não precisa fazer login novamente,
+    # mas sempre escolhe o perfil ao abrir uma nova sessão do site/app.
     if current_user.is_authenticated:
-        if session.get("active_profile"):
-            return redirect(url_for("home"))
-        return redirect(url_for("select_profile_page"))
+        session.pop("active_profile", None)
+        return redirect(url_for("welcome_after_login"))
+    return redirect(url_for("login"))
+
+
+@app.route("/start")
+def app_start():
+    # Entrada exclusiva do PWA/app instalado.
+    if current_user.is_authenticated:
+        session.pop("active_profile", None)
+        return redirect(url_for("welcome_after_login"))
     return redirect(url_for("login"))
 
 
@@ -554,7 +564,7 @@ def login():
 
         user = User.query.filter_by(username=email).first()
         if user and check_password_hash(user.password, password):
-            login_user(user)
+            login_user(user, remember=True)
             session["user_id"] = user.id
             session.pop("active_profile", None)
             return redirect(url_for("welcome_after_login"))
@@ -630,7 +640,7 @@ def select_profile(profile_id):
         return redirect(url_for("select_profile_page"))
 
     session["active_profile"] = profile.id
-    return redirect(url_for("home"))
+    return redirect(url_for("home", profile_selected=1))
 
 
 @app.route("/manage_profiles")
