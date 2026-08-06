@@ -47,6 +47,16 @@ if db_url.startswith("postgres://"):
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# Mantém as conexões PostgreSQL saudáveis após pausas/reinícios do Render.
+# No SQLite local estas opções não são necessárias.
+if db_url.startswith(("postgresql://", "postgresql+")):
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_pre_ping": True,
+        "pool_recycle": 280,
+        "pool_size": 5,
+        "max_overflow": 5,
+    }
+
 # ✅ UPLOAD CONFIG (avatar)
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads", "avatars")
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5MB
