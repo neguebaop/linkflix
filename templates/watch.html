@@ -5,6 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ content.title }} - Linkflix</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+  .watch-player-shell { position: relative; background:#000; border-radius:14px; overflow:hidden; }
+  .watch-player-shell iframe { display:block; width:100%; min-height:clamp(300px, 62vh, 760px); border:0; }
+  .linkflix-fullscreen-btn {
+    position:absolute; right:14px; bottom:14px; z-index:50;
+    display:flex; align-items:center; gap:8px;
+    border:1px solid rgba(255,255,255,.28); border-radius:10px;
+    padding:10px 13px; color:#fff; background:rgba(8,8,10,.82);
+    font-weight:700; cursor:pointer; backdrop-filter:blur(8px);
+  }
+  .linkflix-fullscreen-btn:hover { background:rgba(229,9,20,.92); }
+  .linkflix-fullscreen-btn svg { width:18px; height:18px; fill:currentColor; }
+  .watch-player-shell:fullscreen,
+  .watch-player-shell:-webkit-full-screen { width:100vw; height:100vh; border-radius:0; background:#000; }
+  .watch-player-shell:fullscreen iframe,
+  .watch-player-shell:-webkit-full-screen iframe { width:100%; height:100%; min-height:100%; }
+</style>
 </head>
 
 <body class="watch-body">
@@ -21,58 +38,40 @@
 </div>
 
 <div class="watch-wrap">
-
-  <!-- ================= PLAYER ================= -->
   <div class="watch-player">
+    <div class="watch-player-shell" id="playerShell">
+      {% if not is_series %}
+        <iframe id="contentFrame"
+          src="https://playerflixapi.com/filme/{{ content.tmdb_id }}"
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          allowfullscreen webkitallowfullscreen mozallowfullscreen>
+        </iframe>
+      {% else %}
+        <iframe id="seriesFrame"
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          allowfullscreen webkitallowfullscreen mozallowfullscreen>
+        </iframe>
+      {% endif %}
 
-    {% if not is_series %}
-      <!-- 🎬 FILME -->
-      <iframe
-        src="https://playerflixapi.com/filme/{{ content.tmdb_id }}"
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-        allowfullscreen>
-      </iframe>
+      <button type="button" class="linkflix-fullscreen-btn" id="fullscreenBtn" aria-label="Abrir em tela cheia">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+        <span>Tela cheia</span>
+      </button>
+    </div>
 
-    {% else %}
-      <!-- 📺 SÉRIE -->
-      <iframe
-        id="seriesFrame"
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-        allowfullscreen>
-      </iframe>
-
+    {% if is_series %}
       <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
-        <div>
-          <label>Temporada</label><br>
-          <select id="seasonSelect"></select>
-        </div>
-
-        <div>
-          <label>Episódio</label><br>
-          <select id="episodeSelect"></select>
-        </div>
+        <div><label>Temporada</label><br><select id="seasonSelect"></select></div>
+        <div><label>Episódio</label><br><select id="episodeSelect"></select></div>
       </div>
     {% endif %}
-
   </div>
 
-  <!-- ================= INFO ================= -->
   <div class="watch-info">
-
-    {% if content.description %}
-      <p class="watch-desc">{{ content.description }}</p>
-    {% endif %}
-
+    {% if content.description %}<p class="watch-desc">{{ content.description }}</p>{% endif %}
     <div class="watch-progress-card">
-      <div class="watch-progress-top">
-        <span>Progresso</span>
-        <span id="pctText">0%</span>
-      </div>
-
-      <div class="watch-progress-bar">
-        <span id="pctBar" style="width:0%"></span>
-      </div>
-
+      <div class="watch-progress-top"><span>Progresso</span><span id="pctText">0%</span></div>
+      <div class="watch-progress-bar"><span id="pctBar" style="width:0%"></span></div>
       <div class="watch-progress-actions">
         <button class="btn-ghost" onclick="setProgress(0)">Recomeçar</button>
         <button class="btn-ghost" onclick="setProgress(25)">25%</button>
@@ -81,11 +80,35 @@
         <button class="btn-primary" onclick="setProgress(95)">Quase no fim</button>
       </div>
     </div>
-
   </div>
 </div>
 
 <script>
+const playerShell = document.getElementById("playerShell");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+
+async function toggleFullscreen(){
+  try {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      if (playerShell.requestFullscreen) await playerShell.requestFullscreen();
+      else if (playerShell.webkitRequestFullscreen) playerShell.webkitRequestFullscreen();
+    } else {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+  } catch (error) {
+    console.error("Não foi possível abrir a tela cheia:", error);
+  }
+}
+fullscreenBtn.addEventListener("click", toggleFullscreen);
+
+function updateFullscreenLabel(){
+  const active = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  fullscreenBtn.querySelector("span").textContent = active ? "Sair da tela cheia" : "Tela cheia";
+}
+document.addEventListener("fullscreenchange", updateFullscreenLabel);
+document.addEventListener("webkitfullscreenchange", updateFullscreenLabel);
+
 const contentId = {{ content.id }};
 const updateUrl = `/progress/update/${contentId}`;
 let currentPct = {{ progress_pct|default(0) }};
@@ -95,81 +118,50 @@ function paint(pct){
   document.getElementById("pctText").innerText = currentPct + "%";
   document.getElementById("pctBar").style.width = currentPct + "%";
 }
-
 async function sendProgressPercent(pct){
-  await fetch(updateUrl,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({ position:pct, duration:100 })
-  });
+  await fetch(updateUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ position:pct, duration:100 })});
 }
-
-function setProgress(pct){
-  paint(pct);
-  sendProgressPercent(pct);
-}
-
+function setProgress(pct){ paint(pct); sendProgressPercent(pct); }
 paint(currentPct);
 
 {% if is_series %}
-
 const TMDB_ID = "{{ content.tmdb_id }}";
 const seasonSelect = document.getElementById("seasonSelect");
 const episodeSelect = document.getElementById("episodeSelect");
 const frame = document.getElementById("seriesFrame");
 
-// Carregar temporadas
 fetch(`/api/tmdb/tv/${TMDB_ID}/seasons`)
 .then(res => res.json())
 .then(data => {
-
   const seasons = data.seasons || [];
-
   seasons.forEach(s => {
     const opt = document.createElement("option");
     opt.value = s.season_number;
     opt.textContent = s.name;
     seasonSelect.appendChild(opt);
   });
-
-  loadEpisodes(seasons[0].season_number);
+  if (seasons.length) loadEpisodes(seasons[0].season_number);
 });
 
-// Carregar episódios
 function loadEpisodes(seasonNumber){
   fetch(`/api/tmdb/tv/${TMDB_ID}/season/${seasonNumber}`)
   .then(res => res.json())
   .then(data => {
-
     episodeSelect.innerHTML = "";
-
     const eps = data.episodes || [];
-
     eps.forEach(ep => {
       const opt = document.createElement("option");
       opt.value = ep.episode_number;
       opt.textContent = ep.episode_number + " - " + ep.name;
       episodeSelect.appendChild(opt);
     });
-
-    loadPlayer(seasonNumber, eps[0].episode_number);
+    if (eps.length) loadPlayer(seasonNumber, eps[0].episode_number);
   });
 }
-
-function loadPlayer(season, episode){
-  frame.src = `https://playerflixapi.com/serie/${TMDB_ID}/${season}/${episode}`;
-}
-
-seasonSelect.addEventListener("change", ()=>{
-  loadEpisodes(seasonSelect.value);
-});
-
-episodeSelect.addEventListener("change", ()=>{
-  loadPlayer(seasonSelect.value, episodeSelect.value);
-});
-
+function loadPlayer(season, episode){ frame.src = `https://playerflixapi.com/serie/${TMDB_ID}/${season}/${episode}`; }
+seasonSelect.addEventListener("change", ()=> loadEpisodes(seasonSelect.value));
+episodeSelect.addEventListener("change", ()=> loadPlayer(seasonSelect.value, episodeSelect.value));
 {% endif %}
 </script>
-
 </body>
 </html>

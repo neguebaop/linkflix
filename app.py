@@ -17,6 +17,8 @@ from flask_login import (
     logout_user, current_user
 )
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -156,6 +158,71 @@ def tmdb_lookup_item(item_type: str, tmdb_id: str):
 _db_ready = False
 
 
+def _seed_postgres_from_bundled_sqlite_once():
+    """
+    Copia automaticamente os dados do SQLite enviado no repositório para o
+    PostgreSQL apenas quando o banco PostgreSQL estiver vazio. Isso preserva
+    filmes, usuários, perfis, favoritos e progresso já existentes no primeiro
+    deploy com DATABASE_URL configurada.
+    """
+    database_url = app.config.get("SQLALCHEMY_DATABASE_URI", "")
+    if not str(database_url).startswith(("postgresql://", "postgresql+")):
+        return
+
+    sqlite_path = os.path.join(app.instance_path, "linkflix.db")
+    if not os.path.exists(sqlite_path):
+        return
+
+    # Se já há qualquer conteúdo ou usuário, o banco já foi inicializado.
+    if Content.query.first() is not None or User.query.first() is not None:
+        return
+
+    source_engine = create_engine(f"sqlite:///{sqlite_path}")
+    table_order = [
+        "user", "category", "content", "profile",
+        "content_categories", "favorite", "watch_progress", "plan_purchase"
+    ]
+
+    try:
+        source_inspector = inspect(source_engine)
+        source_tables = set(source_inspector.get_table_names())
+
+        for table_name in table_order:
+            if table_name not in source_tables or table_name not in db.metadata.tables:
+                continue
+
+            target_table = db.metadata.tables[table_name]
+            with source_engine.connect() as source_conn:
+                rows = [dict(row._mapping) for row in source_conn.execute(text(f'SELECT * FROM "{table_name}"'))]
+
+            if rows:
+                valid_columns = {column.name for column in target_table.columns}
+                clean_rows = [
+                    {key: value for key, value in row.items() if key in valid_columns}
+                    for row in rows
+                ]
+                db.session.execute(target_table.insert(), clean_rows)
+
+        db.session.commit()
+
+        # Ajusta as sequências do PostgreSQL após inserir IDs antigos explicitamente.
+        for table_name in ["user", "category", "content", "profile", "favorite", "watch_progress", "plan_purchase"]:
+            if table_name not in db.metadata.tables:
+                continue
+            db.session.execute(text(
+                f"SELECT setval(pg_get_serial_sequence('\"{table_name}\"', 'id'), "
+                f"COALESCE((SELECT MAX(id) FROM \"{table_name}\"), 1), true)"
+            ))
+        db.session.commit()
+        app.logger.info("Dados do SQLite migrados automaticamente para o PostgreSQL.")
+
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception("Falha ao migrar o SQLite para PostgreSQL: %s", exc)
+    finally:
+        source_engine.dispose()
+
+
 @app.before_request
 def _create_tables_once_safe():
     global _db_ready
@@ -163,8 +230,10 @@ def _create_tables_once_safe():
         return
     try:
         db.create_all()
+        _seed_postgres_from_bundled_sqlite_once()
         _db_ready = True
-    except Exception:
+    except SQLAlchemyError as exc:
+        app.logger.exception("Não foi possível preparar o banco de dados: %s", exc)
         try:
             db.session.rollback()
         except Exception:
