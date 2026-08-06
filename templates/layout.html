@@ -12,7 +12,9 @@
 
 <nav class="navbar">
   <div class="nav-left">
-    <a class="logo" href="{{ url_for('home') }}">LINKFLIX</a>
+    <a class="logo" href="{{ url_for('home') }}" aria-label="Linkflix - Início">
+      <img src="{{ url_for('static', filename='images/linkflix_logo.png') }}" alt="LINKFLIX">
+    </a>
 
     <div class="nav-links">
       <a href="{{ url_for('home') }}">Início</a>
@@ -171,6 +173,13 @@
 
     document.addEventListener('keydown', (e) => {
       if(e.key === 'Escape') closeSearch();
+    });
+
+    document.addEventListener('pointerdown', (e) => {
+      const wrap = document.querySelector('.search-wrap');
+      if (navbar.classList.contains('search-open') && wrap && !wrap.contains(e.target)) {
+        closeSearch();
+      }
     });
   })();
 </script>

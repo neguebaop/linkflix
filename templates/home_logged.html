@@ -112,18 +112,77 @@
         requestAnimationFrame(() => container.classList.add('is-playing'));
     }
 
+    let activePreview = null;
+    let previewCloseTimer = null;
+
+    function stopAndRemovePreview() {
+        clearTimeout(previewCloseTimer);
+        if (activePreview) {
+            activePreview.querySelectorAll('iframe').forEach(frame => frame.src = 'about:blank');
+            activePreview.remove();
+            activePreview = null;
+        }
+        document.body.classList.remove('card-preview-open');
+    }
+
+    function schedulePreviewClose() {
+        clearTimeout(previewCloseTimer);
+        previewCloseTimer = setTimeout(stopAndRemovePreview, 130);
+    }
+
+    async function openFloatingPreview(card) {
+        if (!card || !card.isConnected) return;
+        stopAndRemovePreview();
+
+        const rect = card.getBoundingClientRect();
+        const width = Math.min(340, Math.max(294, rect.width * 1.28));
+        const mediaHeight = width * 9 / 16;
+        const left = Math.min(window.innerWidth - width - 14, Math.max(14, rect.left - (width - rect.width) / 2));
+        const top = Math.min(window.innerHeight - mediaHeight - 168, Math.max(76, rect.top - 28));
+
+        const preview = card.cloneNode(true);
+        preview.classList.add('hover-floating-preview');
+        preview.style.width = `${width}px`;
+        preview.style.height = `${mediaHeight}px`;
+        preview.style.left = `${left}px`;
+        preview.style.top = `${top}px`;
+        preview.querySelectorAll('.progress-bar').forEach(el => el.remove());
+        const trailerBox = preview.querySelector('.card-trailer');
+        if (trailerBox) {
+            trailerBox.innerHTML = '';
+            trailerBox.dataset.loaded = '0';
+            trailerBox.classList.remove('is-playing');
+        }
+
+        preview.addEventListener('mouseenter', () => clearTimeout(previewCloseTimer));
+        preview.addEventListener('mouseleave', schedulePreviewClose);
+        document.body.appendChild(preview);
+        activePreview = preview;
+        document.body.classList.add('card-preview-open');
+
+        requestAnimationFrame(() => preview.classList.add('is-visible'));
+
+        const trailer = await getTrailer(card.dataset.contentId);
+        if (activePreview !== preview || !preview.isConnected) return;
+        mountTrailer(preview.querySelector('.card-trailer'), trailer);
+    }
+
     document.querySelectorAll('.movie-card[data-content-id]').forEach(card => {
         let timer;
         card.addEventListener('mouseenter', () => {
-            timer = setTimeout(async () => {
-                if (!card.matches(':hover')) return;
-                const trailer = await getTrailer(card.dataset.contentId);
-                if (!card.matches(':hover')) return;
-                mountTrailer(card.querySelector('.card-trailer'), trailer);
-            }, 850);
+            clearTimeout(previewCloseTimer);
+            timer = setTimeout(() => {
+                if (card.matches(':hover')) openFloatingPreview(card);
+            }, 620);
         });
-        card.addEventListener('mouseleave', () => clearTimeout(timer));
+        card.addEventListener('mouseleave', () => {
+            clearTimeout(timer);
+            schedulePreviewClose();
+        });
     });
+
+    window.addEventListener('scroll', stopAndRemovePreview, {passive:true});
+    window.addEventListener('resize', stopAndRemovePreview, {passive:true});
 
     const hero = document.querySelector('.featured-cinematic[data-content-id]');
     if (hero) {
@@ -304,18 +363,77 @@
         requestAnimationFrame(() => container.classList.add('is-playing'));
     }
 
+    let activePreview = null;
+    let previewCloseTimer = null;
+
+    function stopAndRemovePreview() {
+        clearTimeout(previewCloseTimer);
+        if (activePreview) {
+            activePreview.querySelectorAll('iframe').forEach(frame => frame.src = 'about:blank');
+            activePreview.remove();
+            activePreview = null;
+        }
+        document.body.classList.remove('card-preview-open');
+    }
+
+    function schedulePreviewClose() {
+        clearTimeout(previewCloseTimer);
+        previewCloseTimer = setTimeout(stopAndRemovePreview, 130);
+    }
+
+    async function openFloatingPreview(card) {
+        if (!card || !card.isConnected) return;
+        stopAndRemovePreview();
+
+        const rect = card.getBoundingClientRect();
+        const width = Math.min(340, Math.max(294, rect.width * 1.28));
+        const mediaHeight = width * 9 / 16;
+        const left = Math.min(window.innerWidth - width - 14, Math.max(14, rect.left - (width - rect.width) / 2));
+        const top = Math.min(window.innerHeight - mediaHeight - 168, Math.max(76, rect.top - 28));
+
+        const preview = card.cloneNode(true);
+        preview.classList.add('hover-floating-preview');
+        preview.style.width = `${width}px`;
+        preview.style.height = `${mediaHeight}px`;
+        preview.style.left = `${left}px`;
+        preview.style.top = `${top}px`;
+        preview.querySelectorAll('.progress-bar').forEach(el => el.remove());
+        const trailerBox = preview.querySelector('.card-trailer');
+        if (trailerBox) {
+            trailerBox.innerHTML = '';
+            trailerBox.dataset.loaded = '0';
+            trailerBox.classList.remove('is-playing');
+        }
+
+        preview.addEventListener('mouseenter', () => clearTimeout(previewCloseTimer));
+        preview.addEventListener('mouseleave', schedulePreviewClose);
+        document.body.appendChild(preview);
+        activePreview = preview;
+        document.body.classList.add('card-preview-open');
+
+        requestAnimationFrame(() => preview.classList.add('is-visible'));
+
+        const trailer = await getTrailer(card.dataset.contentId);
+        if (activePreview !== preview || !preview.isConnected) return;
+        mountTrailer(preview.querySelector('.card-trailer'), trailer);
+    }
+
     document.querySelectorAll('.movie-card[data-content-id]').forEach(card => {
         let timer;
         card.addEventListener('mouseenter', () => {
-            timer = setTimeout(async () => {
-                if (!card.matches(':hover')) return;
-                const trailer = await getTrailer(card.dataset.contentId);
-                if (!card.matches(':hover')) return;
-                mountTrailer(card.querySelector('.card-trailer'), trailer);
-            }, 850);
+            clearTimeout(previewCloseTimer);
+            timer = setTimeout(() => {
+                if (card.matches(':hover')) openFloatingPreview(card);
+            }, 620);
         });
-        card.addEventListener('mouseleave', () => clearTimeout(timer));
+        card.addEventListener('mouseleave', () => {
+            clearTimeout(timer);
+            schedulePreviewClose();
+        });
     });
+
+    window.addEventListener('scroll', stopAndRemovePreview, {passive:true});
+    window.addEventListener('resize', stopAndRemovePreview, {passive:true});
 
     const hero = document.querySelector('.featured-cinematic[data-content-id]');
     if (hero) {
