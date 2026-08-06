@@ -557,11 +557,19 @@ def login():
             login_user(user)
             session["user_id"] = user.id
             session.pop("active_profile", None)
-            return redirect(url_for("select_profile_page"))
+            return redirect(url_for("welcome_after_login"))
         else:
             error = "Email ou senha inválidos"
 
     return render_template("login.html", error=error)
+
+
+@app.route("/welcome")
+@login_required
+def welcome_after_login():
+    # Tela de abertura exibida sempre após um login bem-sucedido.
+    session.pop("active_profile", None)
+    return render_template("welcome.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
