@@ -1874,3 +1874,59 @@ body{ overflow-x:hidden; }
   .home-row-wrapper .movie-card{ min-width:210px !important; height:118px !important; }
   .hover-floating-preview{ display:none !important; }
 }
+
+
+/* ===== LINKFLIX V10: espaçamento, navegação ativa e páginas Filmes/Séries cinematográficas ===== */
+.nav-links a{padding:10px 15px;border-radius:999px;transition:background .18s ease,color .18s ease,transform .18s ease}
+.nav-links a:hover,.nav-links a.active{background:rgba(255,255,255,.18);color:#fff;transform:scale(1.04)}
+
+/* O herói não invade mais o título da primeira prateleira. */
+.featured-cinematic{margin-bottom:48px !important}
+.featured-cinematic + .section-title,
+.featured-cinematic + section,
+.featured-cinematic + .row-wrapper{position:relative;z-index:2}
+.home-row-wrapper{margin-top:8px !important;margin-bottom:18px !important}
+.home-row-wrapper .row{padding-top:52px !important;padding-bottom:150px !important}
+.section-title{position:relative;z-index:30;margin-top:34px !important;margin-bottom:4px !important}
+
+.automatic-progress-hidden{display:none !important}
+
+.browse-hero-shell{position:relative;margin:-28px -4vw 0;min-height:78vh;background:#141414}
+.browse-top-over-hero{position:absolute;z-index:30;top:42px;left:4vw;display:flex;align-items:center;gap:22px;margin:0}
+.browse-top-over-hero .browse-title{font-size:clamp(30px,3vw,48px);margin:0;text-shadow:0 2px 12px #000}
+.browse-featured{height:78vh !important;min-height:620px !important;width:100%;margin:0 !important;border-radius:0 !important}
+.browse-featured .featured-img{object-position:center 30%}
+.browse-featured .featured-info{left:4vw;bottom:12%;max-width:560px}
+.browse-featured .featured-info h1{font-size:clamp(44px,5vw,82px)}
+.browse-catalog{position:relative;z-index:15;margin-top:-56px;padding:0 0 80px}
+.browse-row-title{font-size:26px;margin:0 0 18px}
+.browse-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px 8px;overflow:visible}
+.browse-grid .movie-card{width:100%;height:auto;aspect-ratio:16/9;overflow:visible;z-index:1}
+.browse-grid .movie-card:hover{z-index:100;transform:scale(1.22) translateY(-14px)}
+.browse-grid .movie-card:nth-child(6n+1){transform-origin:left center}
+.browse-grid .movie-card:nth-child(6n){transform-origin:right center}
+.browse-grid .movie-card .card-media{height:100%;overflow:hidden;border-radius:6px}
+.browse-grid .movie-card .card-media img{width:100%;height:100%;object-fit:cover}
+.browse-grid .movie-card .card-overlay{top:100%;left:0;right:0;background:#181818;border:0;box-shadow:none}
+.browse-grid .movie-card:hover .card-overlay{opacity:1;pointer-events:auto;transform:translateY(0)}
+.browse-grid .movie-card:hover .card-media{border-radius:6px 6px 0 0}
+.browse-grid .movie-card:hover::after{display:none}
+.browse-grid .movie-card .card-trailer iframe,.featured-video iframe{width:100%;height:100%;border:0}
+.card-trailer{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .2s}
+.card-trailer.is-playing{opacity:1}
+
+@media(max-width:1200px){.browse-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.browse-grid .movie-card:nth-child(n){transform-origin:center}.browse-grid .movie-card:nth-child(4n+1){transform-origin:left center}.browse-grid .movie-card:nth-child(4n){transform-origin:right center}}
+@media(max-width:768px){
+ .featured-cinematic{margin-bottom:28px !important}
+ .home-row-wrapper .row{padding-top:18px !important;padding-bottom:28px !important}
+ .browse-hero-shell{margin:-18px -16px 0;min-height:62vh}
+ .browse-featured{height:62vh !important;min-height:440px !important}
+ .browse-top-over-hero{top:22px;left:18px}
+ .browse-featured .featured-info{left:18px;bottom:10%;max-width:85%}
+ .browse-featured .featured-info h1{font-size:34px}
+ .browse-featured .featured-info p{display:none}
+ .browse-catalog{margin-top:-20px}
+ .browse-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 8px}
+ .browse-grid .movie-card:hover{transform:none}
+ .browse-grid .movie-card .card-overlay{display:none}
+}

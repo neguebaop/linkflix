@@ -2,101 +2,76 @@
 {% block content %}
 
 {% macro card(movie) %}
-  <div class="movie-card {% if progress_map and progress_map.get(movie.id) %}continue{% endif %}">
+  <div class="movie-card {% if progress_map and progress_map.get(movie.id) %}continue{% endif %}" data-content-id="{{ movie.id }}">
       <a class="card-link" href="{{ url_for('watch', id=movie.id) }}" aria-label="Assistir {{ movie.title }}"></a>
-
-      <img src="{{ movie.image }}" alt="{{ movie.title }}">
-
+      <div class="card-media">
+        <img src="{{ movie.image }}" alt="{{ movie.title }}">
+        <div class="card-trailer" aria-hidden="true"></div>
+      </div>
       <div class="card-overlay">
           <div class="card-top">
-              <a href="{{ url_for('watch', id=movie.id) }}"
-                 class="card-btn play"
-                 aria-label="Assistir {{ movie.title }}"
-                 title="Assistir">▶</a>
-
-              <a href="{{ url_for('toggle_favorite', content_id=movie.id, next=request.full_path) }}"
-                 class="card-btn add"
-                 aria-label="Adicionar/Remover da lista"
-                 title="{% if favorite_ids and movie.id in favorite_ids %}Remover da lista{% else %}Adicionar à lista{% endif %}">
+              <a href="{{ url_for('watch', id=movie.id) }}" class="card-btn play" title="Assistir">▶</a>
+              <a href="{{ url_for('toggle_favorite', content_id=movie.id, next=request.full_path) }}" class="card-btn add" title="Adicionar à lista">
                   {% if favorite_ids and movie.id in favorite_ids %}✓{% else %}＋{% endif %}
               </a>
           </div>
-
           <h4 class="card-title">{{ movie.title }}</h4>
-
-          <div class="card-meta">
-              {% if movie.content_type %}
-                  <span class="meta">{{ movie.content_type }}</span>
-                  <span class="dot">•</span>
-              {% endif %}
-              {% if movie.category %}
-                  <span class="badge">{{ movie.category }}</span>
-              {% else %}
-                  <span class="badge">Linkflix</span>
-              {% endif %}
-          </div>
-
-          {% if movie.description %}
-              <p class="card-desc">{{ movie.description }}</p>
-          {% else %}
-              <p class="card-desc">Assista agora no Linkflix.</p>
-          {% endif %}
+          <div class="card-meta"><span class="meta">{{ movie.content_type }}</span><span class="dot">•</span><span class="badge">{{ movie.category or 'Linkflix' }}</span></div>
+          <p class="card-desc">{{ movie.description or 'Assista agora no Linkflix.' }}</p>
       </div>
-
-      {% if progress_map and progress_map.get(movie.id) %}
-      <div class="progress-bar">
-          <span style="width: {{ progress_map.get(movie.id) }}%"></span>
-      </div>
-      {% endif %}
+      {% if progress_map and progress_map.get(movie.id) %}<div class="progress-bar"><span style="width: {{ progress_map.get(movie.id) }}%"></span></div>{% endif %}
   </div>
 {% endmacro %}
 
-<div class="browse-top">
-  <h1 class="browse-title">{{ page_title }}</h1>
-
-  <div class="genre-dropdown">
-    <button class="genre-btn" type="button" onclick="toggleGenres()" aria-haspopup="true" aria-expanded="false">
-      Gêneros <i class="fa fa-caret-down"></i>
-    </button>
-
-    <div class="genre-menu" id="genreMenu">
-      <a href="{{ request.path }}{% if search %}?search={{ search|urlencode }}{% endif %}"
-         class="{% if not selected_genre %}active{% endif %}">
-        Todos
-      </a>
-
-      {% for g in genres %}
-        <a href="{{ request.path }}?genre={{ g|urlencode }}{% if search %}&search={{ search|urlencode }}{% endif %}"
-           class="{% if selected_genre == g %}active{% endif %}">
-          {{ g }}
-        </a>
-      {% endfor %}
+<section class="browse-hero-shell">
+  <div class="browse-top browse-top-over-hero">
+    <h1 class="browse-title">{{ page_title }}</h1>
+    <div class="genre-dropdown">
+      <button class="genre-btn" type="button" onclick="toggleGenres()">Gêneros <i class="fa fa-caret-down"></i></button>
+      <div class="genre-menu" id="genreMenu">
+        <a href="{{ request.path }}{% if search %}?search={{ search|urlencode }}{% endif %}" class="{% if not selected_genre %}active{% endif %}">Todos</a>
+        {% for g in genres %}<a href="{{ request.path }}?genre={{ g|urlencode }}{% if search %}&search={{ search|urlencode }}{% endif %}" class="{% if selected_genre == g %}active{% endif %}">{{ g }}</a>{% endfor %}
+      </div>
     </div>
   </div>
-</div>
 
-<div class="browse-grid">
-  {% for movie in items %}
-    {{ card(movie) }}
-  {% else %}
-    <p style="opacity:.8;">Nada encontrado.</p>
-  {% endfor %}
-</div>
+  {% if featured_content %}
+  <section class="featured featured-cinematic browse-featured" data-content-id="{{ featured_content.id }}">
+      <img src="{{ featured_content.image }}" class="featured-img" alt="{{ featured_content.title }}">
+      <div class="featured-video" aria-hidden="true"></div>
+      <div class="featured-shade"></div>
+      <div class="featured-info">
+          <span class="featured-kicker">L LINKFLIX</span>
+          <h1>{{ featured_content.title }}</h1>
+          <div class="featured-meta"><span>{{ featured_content.content_type }}</span>{% if featured_content.category %}<span>•</span><span>{{ featured_content.category }}</span>{% endif %}</div>
+          <p>{{ featured_content.description }}</p>
+          <div class="featured-actions">
+              <a href="{{ url_for('watch', id=featured_content.id) }}" class="btn-play hero-play">▶ Assistir</a>
+              <a href="{{ url_for('watch', id=featured_content.id) }}" class="btn-info">ⓘ Mais informações</a>
+          </div>
+      </div>
+  </section>
+  {% endif %}
+</section>
+
+<section class="browse-catalog">
+  <h2 class="browse-row-title">{{ 'Principais escolhas do dia para você' if content_type == 'Filme' else 'Sugestões que você vai adorar' }}</h2>
+  <div class="browse-grid">
+    {% for movie in items %}{{ card(movie) }}{% else %}<p style="opacity:.8;">Nada encontrado.</p>{% endfor %}
+  </div>
+</section>
 
 <script>
-function toggleGenres(){
-  const menu = document.getElementById("genreMenu");
-  if(!menu) return;
-  menu.classList.toggle("open");
-}
+function toggleGenres(){ const menu=document.getElementById('genreMenu'); if(menu) menu.classList.toggle('open'); }
+document.addEventListener('click', e=>{const dd=document.querySelector('.genre-dropdown'), menu=document.getElementById('genreMenu'); if(dd&&menu&&!dd.contains(e.target)) menu.classList.remove('open');});
 
-// fecha ao clicar fora
-document.addEventListener("click", function(e){
-  const dd = document.querySelector(".genre-dropdown");
-  const menu = document.getElementById("genreMenu");
-  if (!dd || !menu) return;
-  if (!dd.contains(e.target)) menu.classList.remove("open");
-});
+const trailerCache = new Map();
+async function getTrailer(id){ if(!id)return null; if(trailerCache.has(id))return trailerCache.get(id); const p=fetch(`/api/content/${id}/trailer`).then(r=>r.ok?r.json():null).then(d=>d&&d.ok?d.trailer:null).catch(()=>null); trailerCache.set(id,p); return p; }
+function mountTrailer(box,trailer){ if(!box||!trailer||box.dataset.loaded==='1')return; const f=document.createElement('iframe'); f.src=trailer.embed_url; f.allow='autoplay; encrypted-media; picture-in-picture'; f.tabIndex=-1; box.appendChild(f); box.dataset.loaded='1'; requestAnimationFrame(()=>box.classList.add('is-playing')); }
+function clearTrailer(box){ if(!box)return; box.querySelectorAll('iframe').forEach(f=>{f.src='about:blank';f.remove();}); box.dataset.loaded='0'; box.classList.remove('is-playing'); }
+const hero=document.querySelector('.browse-featured[data-content-id]');
+if(hero) setTimeout(async()=>mountTrailer(hero.querySelector('.featured-video'), await getTrailer(hero.dataset.contentId)),1500);
+let active=null;
+document.querySelectorAll('.browse-grid .movie-card[data-content-id]').forEach(card=>{let timer; card.addEventListener('mouseenter',()=>{clearTimeout(timer);timer=setTimeout(async()=>{if(!card.matches(':hover'))return;if(active&&active!==card)clearTrailer(active.querySelector('.card-trailer'));active=card;mountTrailer(card.querySelector('.card-trailer'),await getTrailer(card.dataset.contentId));},700)}); card.addEventListener('mouseleave',()=>{clearTimeout(timer);clearTrailer(card.querySelector('.card-trailer'));if(active===card)active=null;});});
 </script>
-
 {% endblock %}

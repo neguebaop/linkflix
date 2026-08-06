@@ -1075,10 +1075,13 @@ def filmes_page():
     profile_id = session.get("active_profile")
     favorite_ids, progress_map = build_favorites_and_progress(profile_id)
 
+    featured_content = choice(items) if items else None
+
     return render_template(
         "browse.html",
         page_title="Filmes",
         content_type="Filme",
+        featured_content=featured_content,
         items=items,
         genres=genres,
         selected_genre=genre,
@@ -1100,10 +1103,13 @@ def series_page():
     profile_id = session.get("active_profile")
     favorite_ids, progress_map = build_favorites_and_progress(profile_id)
 
+    featured_content = choice(items) if items else None
+
     return render_template(
         "browse.html",
         page_title="Séries",
         content_type="Serie",
+        featured_content=featured_content,
         items=items,
         genres=genres,
         selected_genre=genre,

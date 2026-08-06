@@ -105,7 +105,7 @@
 
   <div class="watch-info">
     {% if content.description %}<p class="watch-desc">{{ content.description }}</p>{% endif %}
-    <div class="watch-progress-card">
+    <div class="watch-progress-card automatic-progress-hidden">
       <div class="watch-progress-top"><span>Progresso</span><span id="pctText">0%</span></div>
       <div class="watch-progress-bar"><span id="pctBar" style="width:0%"></span></div>
       <div class="watch-progress-actions">
@@ -202,6 +202,28 @@ async function sendProgressPercent(pct){
 }
 function setProgress(pct){ paint(pct); sendProgressPercent(pct); }
 paint(currentPct);
+
+// O player é externo e não expõe o tempo real por segurança do navegador.
+// Ainda assim, o Linkflix salva automaticamente uma estimativa enquanto a página fica aberta,
+// permitindo que o título apareça em "Continuar assistindo" sem apertar botões.
+let autoStartedAt = Date.now();
+let autoPct = Math.max(currentPct || 0, 1);
+let lastSavedPct = -1;
+async function saveAutomaticProgress(force=false){
+  const elapsedMinutes = (Date.now() - autoStartedAt) / 60000;
+  const estimated = Math.min(95, Math.max(autoPct, Math.floor(autoPct + elapsedMinutes * 2)));
+  if (!force && estimated === lastSavedPct) return;
+  lastSavedPct = estimated;
+  paint(estimated);
+  try { await sendProgressPercent(estimated); } catch(e) {}
+}
+setTimeout(() => saveAutomaticProgress(true), 8000);
+setInterval(() => saveAutomaticProgress(false), 30000);
+window.addEventListener('pagehide', () => {
+  const elapsedMinutes = (Date.now() - autoStartedAt) / 60000;
+  const estimated = Math.min(95, Math.max(autoPct, Math.floor(autoPct + elapsedMinutes * 2)));
+  navigator.sendBeacon(updateUrl, new Blob([JSON.stringify({position:estimated,duration:100})], {type:'application/json'}));
+});
 
 {% if is_series %}
 const TMDB_ID = "{{ content.tmdb_id }}";
