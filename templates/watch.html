@@ -6,16 +6,20 @@
 <title>{{ content.title }} - Linkflix</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <style>
-  .watch-player-shell { position: relative; background:#000; border-radius:14px; overflow:hidden; }
+  .watch-player-toolbar {
+    display:flex; justify-content:flex-end; align-items:center; gap:10px;
+    margin:0 0 10px;
+  }
+  .watch-player-shell { position:relative; background:#000; border-radius:14px; overflow:hidden; }
   .watch-player-shell iframe { display:block; width:100%; min-height:clamp(300px, 62vh, 760px); border:0; }
   .linkflix-fullscreen-btn {
-    position:absolute; right:14px; bottom:14px; z-index:50;
-    display:flex; align-items:center; gap:8px;
-    border:1px solid rgba(255,255,255,.28); border-radius:10px;
-    padding:10px 13px; color:#fff; background:rgba(8,8,10,.82);
-    font-weight:700; cursor:pointer; backdrop-filter:blur(8px);
+    position:relative; z-index:100;
+    display:inline-flex; align-items:center; gap:8px;
+    border:1px solid rgba(255,255,255,.32); border-radius:10px;
+    padding:10px 14px; color:#fff; background:#e50914;
+    font-weight:800; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,.35);
   }
-  .linkflix-fullscreen-btn:hover { background:rgba(229,9,20,.92); }
+  .linkflix-fullscreen-btn:hover { background:#ff1f2b; transform:translateY(-1px); }
   .linkflix-fullscreen-btn svg { width:18px; height:18px; fill:currentColor; }
   .watch-player-shell:fullscreen,
   .watch-player-shell:-webkit-full-screen { width:100vw; height:100vh; border-radius:0; background:#000; }
@@ -39,24 +43,26 @@
 
 <div class="watch-wrap">
   <div class="watch-player">
+    <div class="watch-player-toolbar">
+      <button type="button" class="linkflix-fullscreen-btn" id="fullscreenBtn" aria-label="Abrir player em tela cheia">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+        <span>⛶ Tela cheia</span>
+      </button>
+    </div>
+
     <div class="watch-player-shell" id="playerShell">
       {% if not is_series %}
         <iframe id="contentFrame"
           src="https://playerflixapi.com/filme/{{ content.tmdb_id }}"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          allowfullscreen webkitallowfullscreen mozallowfullscreen>
+          allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true">
         </iframe>
       {% else %}
         <iframe id="seriesFrame"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          allowfullscreen webkitallowfullscreen mozallowfullscreen>
+          allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true">
         </iframe>
       {% endif %}
-
-      <button type="button" class="linkflix-fullscreen-btn" id="fullscreenBtn" aria-label="Abrir em tela cheia">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-        <span>Tela cheia</span>
-      </button>
     </div>
 
     {% if is_series %}
@@ -88,23 +94,32 @@ const playerShell = document.getElementById("playerShell");
 const fullscreenBtn = document.getElementById("fullscreenBtn");
 
 async function toggleFullscreen(){
+  const frame = document.getElementById("contentFrame") || document.getElementById("seriesFrame");
+  const target = playerShell;
+
   try {
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      if (playerShell.requestFullscreen) await playerShell.requestFullscreen();
-      else if (playerShell.webkitRequestFullscreen) playerShell.webkitRequestFullscreen();
+      if (target.requestFullscreen) {
+        await target.requestFullscreen();
+      } else if (target.webkitRequestFullscreen) {
+        target.webkitRequestFullscreen();
+      } else if (frame && frame.src) {
+        window.open(frame.src, "_blank", "noopener,noreferrer");
+      }
     } else {
       if (document.exitFullscreen) await document.exitFullscreen();
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
     }
   } catch (error) {
     console.error("Não foi possível abrir a tela cheia:", error);
+    if (frame && frame.src) window.open(frame.src, "_blank", "noopener,noreferrer");
   }
 }
 fullscreenBtn.addEventListener("click", toggleFullscreen);
 
 function updateFullscreenLabel(){
   const active = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-  fullscreenBtn.querySelector("span").textContent = active ? "Sair da tela cheia" : "Tela cheia";
+  fullscreenBtn.querySelector("span").textContent = active ? "✕ Sair da tela cheia" : "⛶ Tela cheia";
 }
 document.addEventListener("fullscreenchange", updateFullscreenLabel);
 document.addEventListener("webkitfullscreenchange", updateFullscreenLabel);
