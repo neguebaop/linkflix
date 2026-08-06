@@ -13,10 +13,13 @@
     </h2>
 
     {% macro card(movie, continue_mode=False) %}
-    <div class="movie-card {% if continue_mode %}continue{% endif %}">
+    <div class="movie-card {% if continue_mode %}continue{% endif %}" data-content-id="{{ movie.id }}">
         <a class="card-link" href="{{ url_for('watch', id=movie.id) }}" aria-label="Assistir {{ movie.title }}"></a>
 
-        <img src="{{ movie.image }}" alt="{{ movie.title }}">
+        <div class="card-media">
+            <img src="{{ movie.image }}" alt="{{ movie.title }}">
+            <div class="card-trailer" aria-hidden="true"></div>
+        </div>
 
         <div class="card-overlay">
             <div class="card-top">
@@ -80,7 +83,54 @@
     <script>
     function scrollRow(button, direction) {
         const row = button.parentElement.querySelector('.row');
-        row.scrollBy({ left: direction * 400, behavior: 'smooth' });
+        row.scrollBy({ left: direction * Math.max(400, row.clientWidth * .72), behavior: 'smooth' });
+    }
+
+    const trailerCache = new Map();
+    async function getTrailer(contentId) {
+        if (!contentId) return null;
+        if (trailerCache.has(contentId)) return trailerCache.get(contentId);
+        const promise = fetch(`/api/content/${contentId}/trailer`, {headers:{'Accept':'application/json'}})
+            .then(r => r.ok ? r.json() : null)
+            .then(data => data && data.ok ? data.trailer : null)
+            .catch(() => null);
+        trailerCache.set(contentId, promise);
+        return promise;
+    }
+
+    function mountTrailer(container, trailer, controls=false) {
+        if (!container || !trailer || container.dataset.loaded === '1') return;
+        const iframe = document.createElement('iframe');
+        iframe.src = trailer.embed_url;
+        iframe.title = 'Trailer';
+        iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+        iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+        iframe.tabIndex = -1;
+        iframe.setAttribute('aria-hidden', 'true');
+        container.appendChild(iframe);
+        container.dataset.loaded = '1';
+        requestAnimationFrame(() => container.classList.add('is-playing'));
+    }
+
+    document.querySelectorAll('.movie-card[data-content-id]').forEach(card => {
+        let timer;
+        card.addEventListener('mouseenter', () => {
+            timer = setTimeout(async () => {
+                if (!card.matches(':hover')) return;
+                const trailer = await getTrailer(card.dataset.contentId);
+                if (!card.matches(':hover')) return;
+                mountTrailer(card.querySelector('.card-trailer'), trailer);
+            }, 850);
+        });
+        card.addEventListener('mouseleave', () => clearTimeout(timer));
+    });
+
+    const hero = document.querySelector('.featured-cinematic[data-content-id]');
+    if (hero) {
+        setTimeout(async () => {
+            const trailer = await getTrailer(hero.dataset.contentId);
+            mountTrailer(hero.querySelector('.featured-video'), trailer);
+        }, 1700);
     }
     </script>
 
@@ -91,21 +141,36 @@
      ========================================================= #}
 
     {% if featured_content %}
-    <div class="featured">
+    <section class="featured featured-cinematic" data-content-id="{{ featured_content.id }}">
         <img src="{{ featured_content.image }}" class="featured-img" alt="{{ featured_content.title }}">
+        <div class="featured-video" aria-hidden="true"></div>
+        <div class="featured-shade"></div>
         <div class="featured-info">
+            <span class="featured-kicker">L  LINKFLIX</span>
             <h1>{{ featured_content.title }}</h1>
+            <div class="featured-meta">
+                <span>{{ featured_content.content_type or 'Filme' }}</span>
+                {% if featured_content.category %}<span>•</span><span>{{ featured_content.category }}</span>{% endif %}
+                {% if featured_content.is_premium %}<span class="featured-age">PREMIUM</span>{% endif %}
+            </div>
             <p>{{ featured_content.description }}</p>
-            <a href="{{ url_for('watch', id=featured_content.id) }}" class="btn-play">▶ Assistir</a>
+            <div class="featured-actions">
+                <a href="{{ url_for('watch', id=featured_content.id) }}" class="btn-play hero-play">▶ Assistir</a>
+                <a href="{{ url_for('watch', id=featured_content.id) }}" class="btn-info">ⓘ Mais informações</a>
+            </div>
         </div>
-    </div>
+        <button class="featured-mute" type="button" aria-label="Ativar ou desativar som">🔇</button>
+    </section>
     {% endif %}
 
     {% macro card(movie, continue_mode=False) %}
-    <div class="movie-card {% if continue_mode %}continue{% endif %}">
+    <div class="movie-card {% if continue_mode %}continue{% endif %}" data-content-id="{{ movie.id }}">
         <a class="card-link" href="{{ url_for('watch', id=movie.id) }}" aria-label="Assistir {{ movie.title }}"></a>
 
-        <img src="{{ movie.image }}" alt="{{ movie.title }}">
+        <div class="card-media">
+            <img src="{{ movie.image }}" alt="{{ movie.title }}">
+            <div class="card-trailer" aria-hidden="true"></div>
+        </div>
 
         <div class="card-overlay">
             <div class="card-top">
@@ -199,7 +264,54 @@
     <script>
     function scrollRow(button, direction) {
         const row = button.parentElement.querySelector('.row');
-        row.scrollBy({ left: direction * 400, behavior: 'smooth' });
+        row.scrollBy({ left: direction * Math.max(400, row.clientWidth * .72), behavior: 'smooth' });
+    }
+
+    const trailerCache = new Map();
+    async function getTrailer(contentId) {
+        if (!contentId) return null;
+        if (trailerCache.has(contentId)) return trailerCache.get(contentId);
+        const promise = fetch(`/api/content/${contentId}/trailer`, {headers:{'Accept':'application/json'}})
+            .then(r => r.ok ? r.json() : null)
+            .then(data => data && data.ok ? data.trailer : null)
+            .catch(() => null);
+        trailerCache.set(contentId, promise);
+        return promise;
+    }
+
+    function mountTrailer(container, trailer, controls=false) {
+        if (!container || !trailer || container.dataset.loaded === '1') return;
+        const iframe = document.createElement('iframe');
+        iframe.src = trailer.embed_url;
+        iframe.title = 'Trailer';
+        iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+        iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+        iframe.tabIndex = -1;
+        iframe.setAttribute('aria-hidden', 'true');
+        container.appendChild(iframe);
+        container.dataset.loaded = '1';
+        requestAnimationFrame(() => container.classList.add('is-playing'));
+    }
+
+    document.querySelectorAll('.movie-card[data-content-id]').forEach(card => {
+        let timer;
+        card.addEventListener('mouseenter', () => {
+            timer = setTimeout(async () => {
+                if (!card.matches(':hover')) return;
+                const trailer = await getTrailer(card.dataset.contentId);
+                if (!card.matches(':hover')) return;
+                mountTrailer(card.querySelector('.card-trailer'), trailer);
+            }, 850);
+        });
+        card.addEventListener('mouseleave', () => clearTimeout(timer));
+    });
+
+    const hero = document.querySelector('.featured-cinematic[data-content-id]');
+    if (hero) {
+        setTimeout(async () => {
+            const trailer = await getTrailer(hero.dataset.contentId);
+            mountTrailer(hero.querySelector('.featured-video'), trailer);
+        }, 1700);
     }
     </script>
 

@@ -2,7 +2,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timedelta
-from functools import wraps
+from functools import wraps, lru_cache
 from random import choice
 from typing import Optional, Dict, Any
 
@@ -102,6 +102,46 @@ def tmdb_get(path: str, params: Optional[Dict[str, Any]] = None):
     r.raise_for_status()
     return r.json()
 
+
+
+
+@lru_cache(maxsize=512)
+def tmdb_trailer_key(item_type: str, tmdb_id: str) -> str:
+    """Retorna a melhor chave de trailer/teaser do YouTube disponível no TMDB."""
+    if item_type not in ("movie", "tv") or not tmdb_id:
+        return ""
+
+    def pick(results):
+        youtube = [v for v in (results or []) if v.get("site") == "YouTube" and v.get("key")]
+        if not youtube:
+            return ""
+        # Prioriza trailer oficial; depois teaser; depois qualquer vídeo do YouTube.
+        priorities = (
+            lambda v: v.get("official") is True and v.get("type") == "Trailer",
+            lambda v: v.get("type") == "Trailer",
+            lambda v: v.get("official") is True and v.get("type") == "Teaser",
+            lambda v: v.get("type") == "Teaser",
+            lambda v: True,
+        )
+        for rule in priorities:
+            for video in youtube:
+                if rule(video):
+                    return video.get("key", "")
+        return ""
+
+    try:
+        data = tmdb_get(f"/{item_type}/{normalize_tmdb_id(tmdb_id)}/videos")
+        key = pick(data.get("results"))
+        if key:
+            return key
+        # Muitos títulos não têm trailer em pt-BR; tenta o catálogo internacional.
+        data = tmdb_get(
+            f"/{item_type}/{normalize_tmdb_id(tmdb_id)}/videos",
+            {"language": "en-US"}
+        )
+        return pick(data.get("results"))
+    except Exception:
+        return ""
 
 def normalize_tmdb_id(raw: str) -> str:
     """
@@ -749,6 +789,30 @@ def api_progress_get(content_id):
         pct = max(0, min(100, pct))
 
     return jsonify({"content_id": content_id, "progress_percent": pct})
+
+
+
+
+@app.route("/api/content/<int:content_id>/trailer")
+@login_required
+@require_active_profile
+def content_trailer(content_id):
+    content = Content.query.get_or_404(content_id)
+    if not content.tmdb_id or not TMDB_API_KEY:
+        return jsonify({"ok": True, "trailer": None})
+
+    item_type = "tv" if "ser" in (content.content_type or "").lower() else "movie"
+    key = tmdb_trailer_key(item_type, content.tmdb_id)
+    if not key:
+        return jsonify({"ok": True, "trailer": None})
+
+    return jsonify({
+        "ok": True,
+        "trailer": {
+            "key": key,
+            "embed_url": f"https://www.youtube-nocookie.com/embed/{key}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist={key}"
+        }
+    })
 
 
 # =========================================================
