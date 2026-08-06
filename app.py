@@ -273,6 +273,29 @@ def _seed_postgres_from_bundled_sqlite_once():
         source_engine.dispose()
 
 
+def _ensure_profile_columns():
+    """Adiciona as preferências novas sem apagar dados existentes."""
+    inspector = inspect(db.engine)
+    if "profile" not in inspector.get_table_names():
+        return
+    existing = {c["name"] for c in inspector.get_columns("profile")}
+    columns = {
+        "pin_hash": "VARCHAR(255)",
+        "viewing_restrictions": "VARCHAR(80) DEFAULT 'Sem restrições'",
+        "display_language": "VARCHAR(40) DEFAULT 'Português'",
+        "audio_language": "VARCHAR(40) DEFAULT 'Português'",
+        "subtitle_language": "VARCHAR(40) DEFAULT 'Português'",
+        "subtitle_style": "VARCHAR(40) DEFAULT 'Padrão'",
+        "autoplay_next": "BOOLEAN DEFAULT TRUE",
+        "autoplay_previews": "BOOLEAN DEFAULT TRUE",
+    }
+    table = '"profile"'
+    for name, sql_type in columns.items():
+        if name not in existing:
+            db.session.execute(text(f'ALTER TABLE {table} ADD COLUMN "{name}" {sql_type}'))
+    db.session.commit()
+
+
 @app.before_request
 def _create_tables_once_safe():
     global _db_ready
@@ -281,6 +304,7 @@ def _create_tables_once_safe():
     try:
         db.create_all()
         _seed_postgres_from_bundled_sqlite_once()
+        _ensure_profile_columns()
         _db_ready = True
     except SQLAlchemyError as exc:
         app.logger.exception("Não foi possível preparar o banco de dados: %s", exc)
@@ -360,6 +384,14 @@ class Profile(db.Model):
     name = db.Column(db.String(50))
     avatar = db.Column(db.String(300), default="/static/images/default_profile.png")
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    pin_hash = db.Column(db.String(255), nullable=True)
+    viewing_restrictions = db.Column(db.String(80), default="Sem restrições")
+    display_language = db.Column(db.String(40), default="Português")
+    audio_language = db.Column(db.String(40), default="Português")
+    subtitle_language = db.Column(db.String(40), default="Português")
+    subtitle_style = db.Column(db.String(40), default="Padrão")
+    autoplay_next = db.Column(db.Boolean, default=True)
+    autoplay_previews = db.Column(db.Boolean, default=True)
 
 
 class Favorite(db.Model):
@@ -637,12 +669,29 @@ def select_profile_page():
     return render_template("select_profile.html", profiles=profiles)
 
 
-@app.route("/profile/<int:profile_id>")
+@app.route("/profile/<int:profile_id>", methods=["GET", "POST"])
 @login_required
 def select_profile(profile_id):
     profile = Profile.query.get_or_404(profile_id)
     if profile.user_id != current_user.id:
         return redirect(url_for("select_profile_page"))
+
+    if profile.pin_hash:
+        unlocked = set(session.get("unlocked_profiles", []))
+        if profile.id not in unlocked:
+            error = None
+            if request.method == "POST":
+                pin = (request.form.get("pin") or "").strip()
+                if not pin:
+                    pin = "".join((request.form.get(f"d{i}") or "") for i in range(1, 5))
+                if len(pin) == 4 and pin.isdigit() and check_password_hash(profile.pin_hash, pin):
+                    unlocked.add(profile.id)
+                    session["unlocked_profiles"] = list(unlocked)
+                else:
+                    error = "PIN incorreto. Digite os 4 números do perfil."
+                    return render_template("profile_pin.html", profile=profile, error=error)
+            else:
+                return render_template("profile_pin.html", profile=profile, error=error)
 
     session["active_profile"] = profile.id
     return redirect(url_for("home"))
@@ -661,22 +710,21 @@ def create_profile():
     error = None
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
-
+        if not name:
+            error = "Digite um nome para o perfil."
+            return render_template("create_profile.html", error=error)
         if len(current_user.profiles) >= 5:
             error = "Você só pode criar até 5 perfis"
             return render_template("create_profile.html", error=error)
 
         avatar_file = request.files.get("avatar_file")
         saved = save_avatar_file(avatar_file)
-
         avatar_url = (request.form.get("avatar_url") or "").strip()
-        avatar = saved if saved else normalize_avatar(avatar_url or "/static/images/default_profile.png")
-
-        profile = Profile(name=name, avatar=avatar, user=current_user)
+        avatar = saved if saved else normalize_avatar(avatar_url or "/static/images/avatar_gallery/avatar_01.svg")
+        profile = Profile(name=name[:50], avatar=avatar, user=current_user)
         db.session.add(profile)
         db.session.commit()
         return redirect(url_for("select_profile_page"))
-
     return render_template("create_profile.html", error=error)
 
 
@@ -689,39 +737,77 @@ def edit_profile(profile_id):
 
     error = None
     if request.method == "POST":
-        profile.name = (request.form.get("name") or profile.name).strip()
+        action = request.form.get("action", "save")
+        if action == "delete":
+            return redirect(url_for("delete_profile", profile_id=profile.id))
 
+        profile.name = ((request.form.get("name") or profile.name).strip() or profile.name)[:50]
         avatar_file = request.files.get("avatar_file")
         saved = save_avatar_file(avatar_file)
-
         avatar_url = (request.form.get("avatar_url") or "").strip()
         if saved:
             profile.avatar = saved
         elif avatar_url:
             profile.avatar = normalize_avatar(avatar_url)
 
-        db.session.commit()
-        return redirect(url_for("select_profile_page"))
+        profile.viewing_restrictions = request.form.get("viewing_restrictions") or "Sem restrições"
+        profile.display_language = request.form.get("display_language") or "Português"
+        profile.audio_language = request.form.get("audio_language") or "Português"
+        profile.subtitle_language = request.form.get("subtitle_language") or "Português"
+        profile.subtitle_style = request.form.get("subtitle_style") or "Padrão"
+        profile.autoplay_next = request.form.get("autoplay_next") == "1"
+        profile.autoplay_previews = request.form.get("autoplay_previews") == "1"
 
+        pin_action = request.form.get("pin_action")
+        pin = (request.form.get("pin") or "").strip()
+        if pin_action == "remove":
+            profile.pin_hash = None
+        elif pin:
+            if len(pin) != 4 or not pin.isdigit():
+                error = "O PIN precisa ter exatamente 4 números."
+                return render_template("edit_profile.html", profile=profile, error=error)
+            profile.pin_hash = generate_password_hash(pin)
+
+        db.session.commit()
+        return redirect(url_for("manage_profiles"))
     return render_template("edit_profile.html", profile=profile, error=error)
 
 
-@app.route("/delete_profile/<int:profile_id>")
+@app.route("/profile/<int:profile_id>/avatars", methods=["GET", "POST"])
+@login_required
+def choose_profile_avatar(profile_id):
+    profile = Profile.query.get_or_404(profile_id)
+    if profile.user_id != current_user.id:
+        return redirect(url_for("manage_profiles"))
+    groups = {
+        "Clássicos Linkflix": [f"/static/images/avatar_gallery/avatar_{i:02d}.svg" for i in range(1, 7)],
+        "Aventureiros": [f"/static/images/avatar_gallery/avatar_{i:02d}.svg" for i in range(7, 13)],
+        "Heróis do céu": [f"/static/images/avatar_gallery/avatar_{i:02d}.svg" for i in range(13, 19)],
+    }
+    if request.method == "POST":
+        avatar = request.form.get("avatar") or ""
+        allowed = {item for items in groups.values() for item in items}
+        if avatar in allowed:
+            profile.avatar = avatar
+            db.session.commit()
+        return redirect(url_for("edit_profile", profile_id=profile.id))
+    return render_template("avatar_gallery.html", profile=profile, groups=groups)
+
+
+@app.route("/delete_profile/<int:profile_id>", methods=["GET", "POST"])
 @login_required
 def delete_profile(profile_id):
     profile = Profile.query.get_or_404(profile_id)
     if profile.user_id != current_user.id:
         return redirect(url_for("manage_profiles"))
-
     Favorite.query.filter_by(profile_id=profile.id).delete()
     WatchProgress.query.filter_by(profile_id=profile.id).delete()
-
     db.session.delete(profile)
     db.session.commit()
-
     if session.get("active_profile") == profile.id:
         session.pop("active_profile", None)
-
+    unlocked = set(session.get("unlocked_profiles", [])); unlocked.discard(profile.id)
+    session["unlocked_profiles"] = list(unlocked)
     return redirect(url_for("manage_profiles"))
 
 
