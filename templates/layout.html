@@ -182,6 +182,15 @@
       }
     });
   })();
+
+  // Barra transparente sobre o banner; vira preta quando a página é rolada.
+  (function(){
+    const nav = document.querySelector('.navbar');
+    if(!nav) return;
+    const updateNav = () => nav.classList.toggle('is-scrolled', window.scrollY > 24);
+    updateNav();
+    window.addEventListener('scroll', updateNav, { passive:true });
+  })();
 </script>
 
 <!-- ✅ INTRO LINKFLIX estilo Netflix (SÓ NO /login) -->

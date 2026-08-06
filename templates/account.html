@@ -1,103 +1,54 @@
-{% extends "layout.html" %}
-{% block content %}
-
-<div class="container-nx">
-  <div class="nx-title">Conta</div>
-  <div class="nx-subtitle">Detalhes da assinatura e atalhos</div>
-
-  <div class="nx-row">
-    <div class="nx-col">
-      <div class="nx-card">
-        <div class="nx-card-inner">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-            <div>
-              <div style="font-weight:900; font-size:16px;">Detalhes da assinatura</div>
-              <div class="nx-help">Seu plano e acesso ao Premium</div>
-            </div>
-
-            {% if user.plan == "Gold" %}
-              <span class="nx-pill warn">GOLD • vitalício</span>
-            {% elif user.plan == "Premium" %}
-              <span class="nx-pill brand">PREMIUM • 30 dias</span>
-            {% else %}
-              <span class="nx-pill">FREE</span>
-            {% endif %}
-          </div>
-
-          <div class="nx-divider"></div>
-
-          <div style="display:grid; gap:10px;">
-            <div><b>Email:</b> <span style="color:var(--muted)">{{ user.username }}</span></div>
-
-            {% if user.plan == "Premium" and user.plan_expires_at %}
-              <div><b>Expira em:</b> <span style="color:var(--muted)">{{ user.plan_expires_at.strftime("%d/%m/%Y %H:%M") }}</span></div>
-            {% elif user.plan == "Gold" %}
-              <div><b>Status:</b> <span style="color:var(--muted)">Sem expiração</span></div>
-            {% else %}
-              <div><b>Status:</b> <span style="color:var(--muted)">Conteúdo Premium bloqueado</span></div>
-            {% endif %}
-          </div>
-
-          <div class="nx-divider"></div>
-
-          <!-- ✅ AGORA É CLICÁVEL -->
-          <a class="nx-action" href="{{ url_for('plans') }}">
-            <div class="left">
-              <div class="label">Gerenciar assinatura</div>
-              <div class="hint">Alterar plano, pagar via PIX e ver status</div>
-            </div>
-            <span class="nx-btn nx-btn-ghost">Abrir</span>
-          </a>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conta - Linkflix</title>
+  <style>
+    :root{--red:#ff1024;--red2:#a6000d;--panel:rgba(10,8,9,.86);--line:rgba(255,35,54,.45);--muted:#aaa;--white:#f6f6f6}
+    *{box-sizing:border-box} html,body{min-height:100%;margin:0}
+    body{font-family:Arial,Helvetica,sans-serif;color:var(--white);background:#050304 url("{{ url_for('static', filename='images/profiles-premium-bg.png') }}") center/cover fixed no-repeat;overflow-x:hidden}
+    body:before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 50% 45%,rgba(55,0,5,.18),transparent 43%),linear-gradient(180deg,rgba(0,0,0,.3),rgba(0,0,0,.62));pointer-events:none}
+    .edge-word{position:fixed;top:50%;transform:translateY(-50%);font-size:88px;font-weight:900;letter-spacing:7px;color:transparent;-webkit-text-stroke:1px rgba(255,17,36,.42);writing-mode:vertical-rl;opacity:.7;z-index:0;user-select:none}.edge-word.left{left:28px;transform:translateY(-50%) rotate(180deg)}.edge-word.right{right:28px}
+    .page{position:relative;z-index:1;width:min(1120px,calc(100% - 48px));margin:0 auto;padding:76px 0 64px}
+    .title-wrap{margin:0 0 28px 14px}.title{font-size:34px;font-weight:900;margin:0;display:flex;align-items:center;gap:12px}.title:before{content:"";width:7px;height:36px;background:linear-gradient(#ff3241,#d40010);box-shadow:0 0 16px rgba(255,20,40,.7)}.subtitle{color:#aaa;font-size:16px;margin:10px 0 0 19px}
+    .grid{display:grid;grid-template-columns:1fr 1.08fr;gap:28px}.panel{background:linear-gradient(145deg,rgba(15,11,12,.94),rgba(8,7,8,.86));border:1px solid rgba(255,255,255,.13);border-radius:22px;min-height:510px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.05) inset;position:relative}.panel:after{content:"";position:absolute;left:12%;right:12%;bottom:-1px;height:2px;background:linear-gradient(90deg,transparent,var(--red),transparent);box-shadow:0 0 18px var(--red)}
+    .panel-head{padding:30px 34px 21px;border-bottom:1px solid rgba(255,255,255,.09);display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.panel-head h2{font-size:22px;margin:0 0 5px}.panel-head p{margin:0;color:#aaa}.badge{padding:11px 16px;border-radius:13px;background:rgba(130,0,12,.28);border:1px solid rgba(255,25,42,.24);font-weight:900;letter-spacing:.5px}
+    .panel-body{padding:14px 24px 28px}.info-box,.action{background:linear-gradient(145deg,rgba(19,17,18,.92),rgba(8,8,9,.9));border:1px solid rgba(255,255,255,.09);border-radius:15px}.info-box{padding:22px 24px;margin-bottom:18px;display:grid;gap:19px}.info-row{display:flex;align-items:center;gap:15px;font-size:16px}.icon{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:rgba(255,16,36,.08);color:var(--red);flex:none}.icon svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}.muted{color:#aaa}.danger-text{color:var(--red)}
+    .actions{display:grid;gap:12px}.action{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 16px;text-decoration:none;color:white;transition:.2s ease}.action:hover{border-color:rgba(255,20,40,.48);background:linear-gradient(145deg,rgba(34,15,18,.96),rgba(12,8,9,.96));transform:translateY(-1px)}.action-left{display:flex;align-items:center;gap:14px}.action .label{font-weight:800;font-size:17px}.action .hint{color:#9e9e9e;font-size:13px;margin-top:4px}.action-btn{min-width:90px;padding:12px 14px;text-align:center;border:1px solid rgba(255,20,40,.6);border-radius:11px;font-weight:800}.action-btn.danger{background:linear-gradient(135deg,#7d000d,#b70919)}
+    @media(max-width:900px){.edge-word{display:none}.page{width:min(94%,720px);padding-top:34px}.grid{grid-template-columns:1fr}.panel{min-height:0}.title-wrap{margin-left:0}.panel-head{padding:25px 24px}.panel-body{padding:14px 16px 24px}}
+    @media(max-width:520px){.page{width:94%}.title{font-size:29px}.action{align-items:flex-start}.action-btn{min-width:66px;padding:10px 8px}.panel-head{flex-direction:column}.info-row{align-items:flex-start}}
+  </style>
+</head>
+<body>
+  <div class="edge-word left">LINKFLIX</div><div class="edge-word right">LINKFLIX</div>
+  <main class="page">
+    <header class="title-wrap"><h1 class="title">Conta</h1><p class="subtitle">Detalhes da assinatura e atalhos</p></header>
+    <section class="grid">
+      <article class="panel">
+        <div class="panel-head"><div><h2>Detalhes da assinatura</h2><p>Seu plano e acesso ao Premium</p></div>
+          {% if user.plan == "Gold" %}<span class="badge">GOLD</span>{% elif user.plan == "Premium" %}<span class="badge">PREMIUM</span>{% else %}<span class="badge">FREE</span>{% endif %}
         </div>
-      </div>
-    </div>
-
-    <div class="nx-col">
-      <div class="nx-card">
-        <div class="nx-card-inner">
-          <div style="font-weight:900; font-size:16px;">Atalhos</div>
-          <div class="nx-help">Acesso rápido às funções da conta</div>
-
-          <div class="nx-divider"></div>
-
-          <div style="display:grid; gap:12px;">
-            <a class="nx-action" href="{{ url_for('plans') }}">
-              <div class="left">
-                <div class="label">Alterar plano</div>
-                <div class="hint">Free / Premium (30 dias) / Gold (vitalício)</div>
-              </div>
-              <span class="nx-btn">Abrir</span>
-            </a>
-
-            <a class="nx-action" href="{{ url_for('manage_profiles') }}">
-              <div class="left">
-                <div class="label">Perfis</div>
-                <div class="hint">Editar / adicionar / trocar perfis</div>
-              </div>
-              <span class="nx-btn">Abrir</span>
-            </a>
-
-            <a class="nx-action" href="{{ url_for('home') }}">
-              <div class="left">
-                <div class="label">Voltar para o Linkflix</div>
-                <div class="hint">Ir para a home</div>
-              </div>
-              <span class="nx-btn nx-btn-ghost">Voltar</span>
-            </a>
-
-            <a class="nx-action" href="{{ url_for('logout') }}">
-              <div class="left">
-                <div class="label">Sair</div>
-                <div class="hint">Encerrar sessão</div>
-              </div>
-              <span class="nx-btn nx-btn-danger">Sair</span>
-            </a>
+        <div class="panel-body">
+          <div class="info-box">
+            <div class="info-row"><span class="icon"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="m3 6 9 7 9-7"/></svg></span><div><b>Email:</b> <span class="muted">{{ user.username }}</span></div></div>
+            <div class="info-row"><span class="icon"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8 8 9 4.6-1 8-4 8-9V7z"/><path d="m9 12 2 2 4-5"/></svg></span><div><b>Status:</b>
+              {% if user.plan == "Premium" and user.plan_expires_at %}<span class="muted">expira em {{ user.plan_expires_at.strftime("%d/%m/%Y %H:%M") }}</span>{% elif user.plan == "Gold" %}<span class="muted">sem expiração</span>{% else %}<span class="danger-text">Conteúdo Premium bloqueado</span>{% endif %}
+            </div></div>
           </div>
-
+          <a class="action" href="{{ url_for('plans') }}"><div class="action-left"><span class="icon"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></span><div><div class="label">Gerenciar assinatura</div><div class="hint">Alterar plano, pagar via PIX e ver status</div></div></div><span class="action-btn">Abrir ›</span></a>
         </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-{% endblock %}
+      </article>
+      <article class="panel">
+        <div class="panel-head"><div><h2>Atalhos</h2><p>Acesso rápido às funções da conta</p></div></div>
+        <div class="panel-body"><div class="actions">
+          <a class="action" href="{{ url_for('plans') }}"><div class="action-left"><span class="icon">♛</span><div><div class="label">Alterar plano</div><div class="hint">Free / Premium (30 dias) / Gold (vitalício)</div></div></div><span class="action-btn">Abrir ›</span></a>
+          <a class="action" href="{{ url_for('manage_profiles') }}"><div class="action-left"><span class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4.2 3.5-6 8-6s7.2 1.8 8 6"/></svg></span><div><div class="label">Perfis</div><div class="hint">Editar, adicionar ou trocar perfis</div></div></div><span class="action-btn">Abrir ›</span></a>
+          <a class="action" href="{{ url_for('home') }}"><div class="action-left"><span class="icon"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"/><path d="M5 10v11h14V10M9 21v-7h6v7"/></svg></span><div><div class="label">Voltar para o Linkflix</div><div class="hint">Ir para a tela inicial</div></div></div><span class="action-btn">Voltar ›</span></a>
+          <a class="action" href="{{ url_for('logout') }}"><div class="action-left"><span class="icon"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M14 3h7v18h-7"/></svg></span><div><div class="label">Sair</div><div class="hint">Encerrar sessão</div></div></div><span class="action-btn danger">Sair ›</span></a>
+        </div></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
