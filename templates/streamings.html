@@ -26,14 +26,14 @@
 
   <div id="catalogo" class="sx-catalog">
     {% for section,items in sections %}
-    <section class="sx-shelf {% if section == 'Top 10 Hoje' %}sx-top10{% endif %}">
+    <section class="sx-shelf {% if section == '10 Mais Assistidos' %}sx-top10{% endif %}">
       <div class="sx-title"><i></i><h2>{{ section }}</h2></div>
       <div class="sx-rail-wrap">
         <button class="sx-arrow left" onclick="sxScroll(this,-1)" aria-label="Anterior">‹</button>
         <div class="sx-rail">
           {% for item in items %}
           <a class="sx-card" href="{{ url_for('watch', id=item.id) }}">
-            {% if section == 'Top 10 Hoje' %}<b class="sx-rank">{{ item.streaming_rank or loop.index }}</b>{% endif %}
+            {% if section == '10 Mais Assistidos' %}<b class="sx-rank">{{ item.streaming_rank or loop.index }}</b>{% endif %}
             <img src="{{ item.image }}" alt="{{ item.title }}"><span class="sx-card-title">{{ item.title }}</span><span class="sx-play">▶</span>
           </a>
           {% endfor %}

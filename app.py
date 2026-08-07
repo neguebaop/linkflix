@@ -1371,7 +1371,7 @@ STREAMING_PROVIDERS = {
     "harrypotter": {"name": "Harry Potter", "mark": "HARRY POTTER", "theme": "#d8c59a", "logo": "/static/images/streaming_logos/harrypotter.png"},
 }
 
-STREAMING_SECTIONS = ["Top 10 Hoje", "Lançamentos", "Novidades", "10 Mais Assistidos"]
+STREAMING_SECTIONS = ["Lançamentos", "Novidades", "10 Mais Assistidos"]
 
 
 def _streaming_items(provider=None):
@@ -1382,20 +1382,33 @@ def _streaming_items(provider=None):
 
 
 def _streaming_groups(items):
+    # No hub Streamings existem somente estas três prateleiras.
+    # Nomes antigos das versões anteriores são migrados visualmente para
+    # não perder conteúdos já cadastrados no banco.
+    aliases = {
+        "Top 10 Hoje": "10 Mais Assistidos",
+        "Mais Assistidos Hoje": "10 Mais Assistidos",
+        "10 Mais Assistidos Hoje": "10 Mais Assistidos",
+        "Adicionados Recentemente": "Novidades",
+        "Adicionado Recentemente": "Novidades",
+        "Recentes": "Novidades",
+    }
     groups = {name: [] for name in STREAMING_SECTIONS}
-    extras = {}
     for item in items:
-        section = (item.streaming_section or "Novidades").strip() or "Novidades"
-        if section in groups:
-            groups[section].append(item)
-        else:
-            extras.setdefault(section, []).append(item)
+        raw = (item.streaming_section or "Novidades").strip() or "Novidades"
+        section = aliases.get(raw, raw)
+        if section not in groups:
+            # Qualquer categoria antiga/personalizada continua aparecendo,
+            # mas entra em Novidades para manter o hub limpo.
+            section = "Novidades"
+        groups[section].append(item)
+
     for name in groups:
-        if name == "Top 10 Hoje":
+        if name == "10 Mais Assistidos":
             groups[name].sort(key=lambda x: (x.streaming_rank or 999, -x.id))
         else:
             groups[name].sort(key=lambda x: x.id, reverse=True)
-    return [(name, groups[name]) for name in STREAMING_SECTIONS if groups[name]] + [(name, vals) for name, vals in extras.items() if vals]
+    return [(name, groups[name]) for name in STREAMING_SECTIONS if groups[name]]
 
 
 @app.route("/streamings")
