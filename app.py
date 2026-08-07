@@ -307,6 +307,10 @@ def _ensure_profile_columns():
     for name, sql_type in columns.items():
         if name not in existing:
             db.session.execute(text(f'ALTER TABLE {table} ADD COLUMN "{name}" {sql_type}'))
+    # Avatares cadastrados no Admin podem ser data URLs grandes. VARCHAR(300)
+    # causava erro 500 ao selecionar um ícone; TEXT aceita a imagem completa.
+    if db.engine.dialect.name == "postgresql" and "avatar" in existing:
+        db.session.execute(text('ALTER TABLE "profile" ALTER COLUMN "avatar" TYPE TEXT'))
     db.session.commit()
 
 
@@ -423,7 +427,7 @@ class Content(db.Model):
 class Profile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
-    avatar = db.Column(db.String(300), default="/static/images/default_profile.png")
+    avatar = db.Column(db.Text, default="/static/images/default_profile.png")
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     pin_hash = db.Column(db.String(255), nullable=True)
     viewing_restrictions = db.Column(db.String(80), default="Sem restrições")
