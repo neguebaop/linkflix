@@ -4,20 +4,18 @@
   <section class="sp-hero {% if not featured %}sp-empty{% endif %}" {% if featured %}style="--hero:url('{{ featured.image }}')"{% endif %}>
     <div class="sp-bg"></div><div class="sp-fade"></div>
     <div class="sp-copy">
-      <div class="sp-brand">{{ provider.mark }}</div>
+      <div class="sp-brand">
+        {% if provider.logo %}<img src="{{ provider.logo }}" alt="{{ provider.name }}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="sp-brand-fallback">{{ provider.mark }}</span>{% else %}<span class="sp-brand-word">{{ provider.mark }}</span>{% endif %}
+      </div>
       {% if featured %}
         <span class="sp-badge">DESTAQUE {{ provider.name|upper }}</span>
         <h1>{{ featured.title }}</h1>
         <div class="sp-meta">{{ featured.content_type or 'Filme' }}{% if featured.category %} · {{ featured.category }}{% endif %}</div>
         <p>{{ featured.description }}</p>
-        <div><a href="{{ url_for('watch', id=featured.id) }}" class="sp-watch">▶ Assistir</a><a href="{{ url_for('streamings_page') }}" class="sp-back">Todos os streamings</a></div>
-      {% else %}<h1>{{ provider.name }}</h1><p>Esta vitrine ainda está vazia.</p>{% endif %}
+        <div><a href="{{ url_for('watch', id=featured.id) }}" class="sp-watch">▶ Assistir</a><a href="{{ url_for('streamings_page') }}" class="sp-back">← Streamings</a></div>
+      {% else %}<h1>{{ provider.name }}</h1><p>Esta vitrine ainda está vazia.</p><a href="{{ url_for('streamings_page') }}" class="sp-back">← Voltar aos streamings</a>{% endif %}
     </div>
   </section>
-
-  <div class="sp-platform-switch">
-    {% for key,p in providers.items() %}<a class="{% if key==provider_key %}on{% endif %}" href="{{ url_for('streaming_provider_page',provider=key) }}">{{ p.mark }}</a>{% endfor %}
-  </div>
 
   <main class="sp-catalog">
   {% for section,items in sections %}

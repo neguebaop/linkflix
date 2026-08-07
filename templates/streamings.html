@@ -11,15 +11,15 @@
       <p>{{ featured.description or 'Escolha sua plataforma e descubra o que assistir.' }}</p>
       <div class="sx-actions"><a href="{{ url_for('watch', id=featured.id) }}" class="sx-primary">▶ Assistir agora</a><a href="#catalogo" class="sx-secondary">＋ Explorar</a></div>
       {% else %}
-      <h1>Seu universo de streamings</h1><p>Cadastre os conteúdos no Admin Streamings e eles aparecem aqui automaticamente.</p>
+      <h1>Seu universo de streamings</h1><p>Netflix, Disney+, Max, Prime Video e seus universos favoritos em um só lugar.</p>
       {% endif %}
     </div>
   </section>
 
   <section class="sx-platforms" aria-label="Plataformas">
     {% for key,p in providers.items() %}
-      <a href="{{ url_for('streaming_provider_page', provider=key) }}" class="sx-platform sx-p-{{ key }}" style="--accent:{{ p.theme }}">
-        <span>{{ p.mark }}</span>
+      <a href="{{ url_for('streaming_provider_page', provider=key) }}" class="sx-platform sx-p-{{ key }}" style="--accent:{{ p.theme }}" title="{{ p.name }}">
+        {% if p.logo %}<img src="{{ p.logo }}" alt="{{ p.name }}" loading="eager"><span class="sx-logo-fallback">{{ p.mark }}</span>{% else %}<span class="sx-wordmark">{{ p.mark }}</span>{% endif %}
       </a>
     {% endfor %}
   </section>
@@ -42,11 +42,14 @@
       </div>
     </section>
     {% else %}
-      <div class="sx-empty-state"><h2>Nenhum streaming cadastrado ainda.</h2><p>Abra o Admin Streamings e adicione títulos à Netflix, Disney+, Max, Prime Video e outras vitrines.</p></div>
+      <div class="sx-empty-state"><h2>Nenhum conteúdo de streaming cadastrado ainda.</h2><p>Assim que você cadastrar títulos no Admin Streamings, os filmes e séries aparecem aqui diretamente — sem precisar abrir uma plataforma primeiro.</p></div>
     {% endfor %}
   </div>
 
   <footer class="sx-footer"><b>LINK<span>FLIX</span></b><p>Um só lugar para organizar os filmes, séries e animações da sua família.</p><small>© 2026 Linkflix</small></footer>
 </div>
-<script>function sxScroll(btn,d){const r=btn.parentElement.querySelector('.sx-rail');r.scrollBy({left:d*Math.max(460,r.clientWidth*.78),behavior:'smooth'})}</script>
+<script>
+function sxScroll(btn,d){const r=btn.parentElement.querySelector('.sx-rail');r.scrollBy({left:d*Math.max(460,r.clientWidth*.78),behavior:'smooth'})}
+document.querySelectorAll('.sx-platform img').forEach(img=>{img.addEventListener('error',()=>{img.style.display='none';const f=img.nextElementSibling;if(f)f.style.display='block'})});
+</script>
 {% endblock %}

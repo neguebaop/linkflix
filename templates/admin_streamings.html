@@ -4,7 +4,7 @@
   <div class="sa-head"><div><span>LINKFLIX STUDIO</span><h1>Admin Streamings</h1><p>Um painel separado só para organizar as vitrines de cada plataforma.</p></div><a href="{{ url_for('streamings_page') }}">Ver Streamings →</a></div>
   <nav class="sa-tabs">{% for key,p in providers.items() %}<a class="{% if key==selected %}on{% endif %}" href="{{ url_for('admin_streamings',provider=key) }}" style="--tab:{{p.theme}}">{{p.mark}}</a>{% endfor %}</nav>
 
-  {% with messages = get_flashed_messages() %}{% if messages %}<div class="sa-flash">{% for m in messages %}<div>{{m}}</div>{% endfor %}</div>{% endif %}{% endwith %}
+  {% with messages = get_flashed_messages() %}{% if messages %}<div class="sa-flash" id="saToast"><div>{{ messages[-1] }}</div></div>{% endif %}{% endwith %}
 
   <div class="sa-grid">
     <section class="sa-panel">
@@ -31,5 +31,6 @@
 </div>
 <script>
 (function(){const b=document.getElementById('stmdbBtn'),i=document.getElementById('stmdb');if(!b)return;b.onclick=async()=>{let raw=(i.value||'').trim();if(!raw)return;let type='';let m=raw.match(/themoviedb\.org\/(movie|tv)\/(\d+)/i);let id=m?m[2]:(raw.match(/\d+/)||[])[0];if(m)type=m[1];if(!id)return alert('TMDB inválido');b.disabled=true;b.textContent='Importando...';try{let u=`/api/tmdb/import?id=${encodeURIComponent(id)}${type?`&type=${type}`:''}`;let r=await fetch(u);let d=await r.json();if(!r.ok||d.error)throw new Error(d.error||'Falha');document.getElementById('stitle').value=d.title||'';document.getElementById('sdesc').value=d.description||'';document.getElementById('simage').value=d.image||'';document.getElementById('sid').value=d.tmdb_id||id;document.getElementById('stype').value=d.content_type||'Filme';document.getElementById('scat').value=(d.genres||[]).join(', ')||d.category||'';}catch(e){alert(e.message)}finally{b.disabled=false;b.textContent='Importar'}}})();
+setTimeout(()=>{const t=document.getElementById('saToast');if(t){t.classList.add('hide');setTimeout(()=>t.remove(),280)}},3200);
 </script>
 {% endblock %}
