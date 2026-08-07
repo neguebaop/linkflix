@@ -21,7 +21,7 @@
       <a class="{% if request.endpoint == 'filmes_page' %}active{% endif %}" href="{{ url_for('filmes_page') }}">Filmes</a>
       <a class="{% if request.endpoint == 'series_page' %}active{% endif %}" href="{{ url_for('series_page') }}">Séries</a>
       <a class="{% if request.endpoint == 'premium_page' %}active{% endif %}" href="{{ url_for('premium_page') }}">Premium</a>
-      <a class="{% if request.endpoint == 'embreve_page' %}active{% endif %}" href="{{ url_for('embreve_page') }}">Em Breve</a>
+      <a class="{% if request.endpoint in ['streamings_page','streaming_provider_page'] %}active{% endif %}" href="{{ url_for('streamings_page') }}">Streamings</a>
     </div>
   </div>
 

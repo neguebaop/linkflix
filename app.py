@@ -314,6 +314,24 @@ def _ensure_profile_columns():
     db.session.commit()
 
 
+def _ensure_content_streaming_columns():
+    """Adiciona os campos da área Streamings sem apagar o catálogo existente."""
+    inspector = inspect(db.engine)
+    if "content" not in inspector.get_table_names():
+        return
+    existing = {c["name"] for c in inspector.get_columns("content")}
+    columns = {
+        "streaming_provider": "VARCHAR(40)",
+        "streaming_section": "VARCHAR(80)",
+        "streaming_rank": "INTEGER",
+        "streaming_featured": "BOOLEAN DEFAULT FALSE",
+    }
+    for name, sql_type in columns.items():
+        if name not in existing:
+            db.session.execute(text(f'ALTER TABLE "content" ADD COLUMN "{name}" {sql_type}'))
+    db.session.commit()
+
+
 def _ensure_profile_icon_columns():
     """Atualiza a tabela de ícones em bancos existentes sem apagar registros."""
     inspector = inspect(db.engine)
@@ -342,6 +360,9 @@ def _create_tables_once_safe():
         return
     try:
         db.create_all()
+        # IMPORTANTE: em bancos existentes, adicione as colunas de streaming
+        # antes de qualquer Content.query, senão o primeiro request pode falhar.
+        _ensure_content_streaming_columns()
         _seed_postgres_from_bundled_sqlite_once()
         _ensure_profile_columns()
         _ensure_profile_icon_columns()
@@ -420,6 +441,11 @@ class Content(db.Model):
     content_type = db.Column(db.String(50), default="Filme")  # Filme / Serie / Em Breve
     is_premium = db.Column(db.Boolean, default=False)
     duration_seconds = db.Column(db.Integer, default=0)
+    # V28: organização exclusiva da área Streamings
+    streaming_provider = db.Column(db.String(40), nullable=True, index=True)
+    streaming_section = db.Column(db.String(80), nullable=True)
+    streaming_rank = db.Column(db.Integer, nullable=True)
+    streaming_featured = db.Column(db.Boolean, default=False)
 
     extra_categories = db.relationship("Category", secondary=content_categories, lazy="joined")
 
@@ -1323,6 +1349,167 @@ def embreve_page():
         search=search,
         favorite_ids=favorite_ids,
         progress_map=progress_map
+    )
+
+
+
+# =========================================================
+# ==================== STREAMINGS V28 ======================
+# =========================================================
+
+STREAMING_PROVIDERS = {
+    "netflix": {"name": "Netflix", "mark": "NETFLIX", "theme": "#e50914"},
+    "disney": {"name": "Disney+", "mark": "Disney+", "theme": "#56a8ff"},
+    "max": {"name": "Max", "mark": "max", "theme": "#8d64ff"},
+    "prime": {"name": "Prime Video", "mark": "prime video", "theme": "#00a8e1"},
+    "marvel": {"name": "Marvel", "mark": "MARVEL", "theme": "#ed1d24"},
+    "dc": {"name": "DC", "mark": "DC", "theme": "#2b7fff"},
+    "bond": {"name": "007", "mark": "007", "theme": "#d8bb78"},
+    "starwars": {"name": "Star Wars", "mark": "STAR WARS", "theme": "#ffe81f"},
+}
+
+STREAMING_SECTIONS = ["Top 10 Hoje", "Lançamentos", "Novidades", "10 Mais Assistidos"]
+
+
+def _streaming_items(provider=None):
+    q = Content.query.filter(Content.streaming_provider.isnot(None))
+    if provider:
+        q = q.filter(Content.streaming_provider == provider)
+    return q.order_by(Content.id.desc()).all()
+
+
+def _streaming_groups(items):
+    groups = {name: [] for name in STREAMING_SECTIONS}
+    extras = {}
+    for item in items:
+        section = (item.streaming_section or "Novidades").strip() or "Novidades"
+        if section in groups:
+            groups[section].append(item)
+        else:
+            extras.setdefault(section, []).append(item)
+    for name in groups:
+        if name == "Top 10 Hoje":
+            groups[name].sort(key=lambda x: (x.streaming_rank or 999, -x.id))
+        else:
+            groups[name].sort(key=lambda x: x.id, reverse=True)
+    return [(name, groups[name]) for name in STREAMING_SECTIONS if groups[name]] + [(name, vals) for name, vals in extras.items() if vals]
+
+
+@app.route("/streamings")
+@login_required
+@require_active_profile
+def streamings_page():
+    items = _streaming_items()
+    featured = next((x for x in items if x.streaming_featured), None) or (items[0] if items else None)
+    return render_template(
+        "streamings.html",
+        providers=STREAMING_PROVIDERS,
+        sections=_streaming_groups(items),
+        featured=featured,
+        active_profile=get_active_profile(),
+    )
+
+
+@app.route("/streaming/<provider>")
+@login_required
+@require_active_profile
+def streaming_provider_page(provider):
+    cfg = STREAMING_PROVIDERS.get(provider)
+    if not cfg:
+        return redirect(url_for("streamings_page"))
+    items = _streaming_items(provider)
+    featured = next((x for x in items if x.streaming_featured), None) or (items[0] if items else None)
+    return render_template(
+        "streaming_provider.html",
+        provider_key=provider,
+        provider=cfg,
+        providers=STREAMING_PROVIDERS,
+        sections=_streaming_groups(items),
+        featured=featured,
+    )
+
+
+@app.route("/admin/streamings", methods=["GET", "POST"])
+@login_required
+@admin_required
+def admin_streamings():
+    if request.method == "POST":
+        action = request.form.get("action", "add")
+        if action == "remove":
+            item = Content.query.get_or_404(request.form.get("content_id", type=int))
+            item.streaming_provider = None
+            item.streaming_section = None
+            item.streaming_rank = None
+            item.streaming_featured = False
+            db.session.commit()
+            flash("Conteúdo removido da área Streamings. Ele continua no catálogo normal.")
+            return redirect(url_for("admin_streamings"))
+
+        title = (request.form.get("title") or "").strip()
+        provider = (request.form.get("provider") or "").strip().lower()
+        section = (request.form.get("streaming_section") or "Novidades").strip()
+        if provider not in STREAMING_PROVIDERS:
+            flash("Streaming inválido.")
+            return redirect(url_for("admin_streamings"))
+
+        tmdb_id = normalize_tmdb_id((request.form.get("tmdb_id") or "").strip())
+        content_type = (request.form.get("content_type") or "Filme").strip()
+        image = (request.form.get("image") or "").strip()
+        description = (request.form.get("description") or "").strip()
+        category = (request.form.get("category") or "").strip()
+
+        # Reaproveita um conteúdo existente, evitando duplicar o filme no banco.
+        existing = None
+        if tmdb_id:
+            existing = Content.query.filter_by(tmdb_id=tmdb_id).first()
+        if existing is None and title:
+            existing = Content.query.filter(
+                db.func.lower(db.func.trim(Content.title)) == title.lower(),
+                db.func.lower(db.func.trim(Content.content_type)) == content_type.lower()
+            ).first()
+
+        if existing:
+            item = existing
+            if image: item.image = image
+            if description: item.description = description[:500]
+            if category: item.category = category[:100]
+        else:
+            if not title or not image:
+                flash("Preencha pelo menos título e imagem.")
+                return redirect(url_for("admin_streamings"))
+            item = Content(
+                title=title,
+                image=image,
+                description=description[:500],
+                category=category[:100],
+                tmdb_id=tmdb_id,
+                content_type=content_type,
+                is_premium=("premium" in request.form),
+            )
+            db.session.add(item)
+
+        # Um título pertence a uma vitrine principal por vez nesta área.
+        if "featured" in request.form:
+            Content.query.filter_by(streaming_provider=provider, streaming_featured=True).update({"streaming_featured": False})
+        item.streaming_provider = provider
+        item.streaming_section = section
+        item.streaming_rank = request.form.get("streaming_rank", type=int)
+        item.streaming_featured = ("featured" in request.form)
+        item.is_premium = ("premium" in request.form)
+        db.session.commit()
+        flash(f'"{item.title}" adicionado em {STREAMING_PROVIDERS[provider]["name"]} / {section}.')
+        return redirect(url_for("admin_streamings", provider=provider))
+
+    selected = (request.args.get("provider") or "netflix").lower()
+    if selected not in STREAMING_PROVIDERS:
+        selected = "netflix"
+    contents = Content.query.filter_by(streaming_provider=selected).order_by(Content.streaming_section.asc(), Content.streaming_rank.asc(), Content.id.desc()).all()
+    return render_template(
+        "admin_streamings.html",
+        providers=STREAMING_PROVIDERS,
+        sections=STREAMING_SECTIONS,
+        selected=selected,
+        contents=contents,
     )
 
 

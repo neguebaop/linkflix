@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="sp-page sp-{{ provider_key }}" style="--brand:{{ provider.theme }}">
+  <section class="sp-hero {% if not featured %}sp-empty{% endif %}" {% if featured %}style="--hero:url('{{ featured.image }}')"{% endif %}>
+    <div class="sp-bg"></div><div class="sp-fade"></div>
+    <div class="sp-copy">
+      <div class="sp-brand">{{ provider.mark }}</div>
+      {% if featured %}
+        <span class="sp-badge">DESTAQUE {{ provider.name|upper }}</span>
+        <h1>{{ featured.title }}</h1>
+        <div class="sp-meta">{{ featured.content_type or 'Filme' }}{% if featured.category %} · {{ featured.category }}{% endif %}</div>
+        <p>{{ featured.description }}</p>
+        <div><a href="{{ url_for('watch', id=featured.id) }}" class="sp-watch">▶ Assistir</a><a href="{{ url_for('streamings_page') }}" class="sp-back">Todos os streamings</a></div>
+      {% else %}<h1>{{ provider.name }}</h1><p>Esta vitrine ainda está vazia.</p>{% endif %}
+    </div>
+  </section>
+
+  <div class="sp-platform-switch">
+    {% for key,p in providers.items() %}<a class="{% if key==provider_key %}on{% endif %}" href="{{ url_for('streaming_provider_page',provider=key) }}">{{ p.mark }}</a>{% endfor %}
+  </div>
+
+  <main class="sp-catalog">
+  {% for section,items in sections %}
+    <section class="sp-shelf {% if section == 'Top 10 Hoje' %}sp-top10{% endif %}">
+      <h2>{{ section }}</h2>
+      <div class="sp-rail-wrap"><button onclick="spScroll(this,-1)">‹</button><div class="sp-rail">
+      {% for item in items %}
+        <a href="{{ url_for('watch',id=item.id) }}" class="sp-card">
+          {% if section == 'Top 10 Hoje' %}<b>{{ item.streaming_rank or loop.index }}</b>{% endif %}
+          <img src="{{ item.image }}" alt="{{ item.title }}"><div class="sp-hover"><strong>{{ item.title }}</strong><span>▶</span></div>
+        </a>
+      {% endfor %}
+      </div><button onclick="spScroll(this,1)">›</button></div>
+    </section>
+  {% else %}<div class="sp-none">Nenhum conteúdo cadastrado em {{ provider.name }}.</div>{% endfor %}
+  </main>
+</div>
+<script>function spScroll(btn,d){const r=btn.parentElement.querySelector('.sp-rail');r.scrollBy({left:d*Math.max(460,r.clientWidth*.78),behavior:'smooth'})}</script>
+{% endblock %}

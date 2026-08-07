@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="sa-page">
+  <div class="sa-head"><div><span>LINKFLIX STUDIO</span><h1>Admin Streamings</h1><p>Um painel separado só para organizar as vitrines de cada plataforma.</p></div><a href="{{ url_for('streamings_page') }}">Ver Streamings →</a></div>
+  <nav class="sa-tabs">{% for key,p in providers.items() %}<a class="{% if key==selected %}on{% endif %}" href="{{ url_for('admin_streamings',provider=key) }}" style="--tab:{{p.theme}}">{{p.mark}}</a>{% endfor %}</nav>
+
+  {% with messages = get_flashed_messages() %}{% if messages %}<div class="sa-flash">{% for m in messages %}<div>{{m}}</div>{% endfor %}</div>{% endif %}{% endwith %}
+
+  <div class="sa-grid">
+    <section class="sa-panel">
+      <h2>Adicionar em {{ providers[selected].name }}</h2>
+      <div class="sa-field"><label>Importar do TMDB</label><div class="sa-import"><input id="stmdb" placeholder="Cole link ou ID do TMDB"><button type="button" id="stmdbBtn">Importar</button></div></div>
+      <form method="post" id="streamForm">
+        <input type="hidden" name="provider" value="{{ selected }}">
+        <div class="sa-field"><label>Título</label><input name="title" id="stitle" required></div>
+        <div class="sa-two"><div class="sa-field"><label>Tipo</label><select name="content_type" id="stype"><option>Filme</option><option>Serie</option></select></div><div class="sa-field"><label>TMDB ID</label><input name="tmdb_id" id="sid"></div></div>
+        <div class="sa-field"><label>Imagem / backdrop</label><input name="image" id="simage" required></div>
+        <div class="sa-field"><label>Gêneros</label><input name="category" id="scat"></div>
+        <div class="sa-field"><label>Descrição</label><textarea name="description" id="sdesc"></textarea></div>
+        <div class="sa-two"><div class="sa-field"><label>Área da página</label><select name="streaming_section">{% for x in sections %}<option>{{x}}</option>{% endfor %}<option>Destaques para você</option><option>Originais</option><option>Para assistir em família</option></select></div><div class="sa-field"><label>Posição Top 10</label><input name="streaming_rank" type="number" min="1" max="10" placeholder="1 a 10"></div></div>
+        <label class="sa-check"><input type="checkbox" name="featured"> Usar como banner principal desta plataforma</label>
+        <label class="sa-check"><input type="checkbox" name="premium"> Conteúdo Premium</label>
+        <button class="sa-save" type="submit">＋ Adicionar à {{ providers[selected].name }}</button>
+      </form>
+    </section>
+
+    <section class="sa-panel"><h2>Conteúdos de {{ providers[selected].name }}</h2><div class="sa-list">
+      {% for c in contents %}<article><img src="{{c.image}}"><div><b>{{c.title}}</b><small>{{c.streaming_section}}{% if c.streaming_rank %} · #{{c.streaming_rank}}{% endif %}{% if c.streaming_featured %} · BANNER{% endif %}</small></div><a href="{{url_for('watch',id=c.id)}}">Ver</a><form method="post"><input type="hidden" name="action" value="remove"><input type="hidden" name="content_id" value="{{c.id}}"><button>Remover</button></form></article>{% else %}<p class="sa-muted">Nada cadastrado nesta plataforma.</p>{% endfor %}
+    </div></section>
+  </div>
+</div>
+<script>
+(function(){const b=document.getElementById('stmdbBtn'),i=document.getElementById('stmdb');if(!b)return;b.onclick=async()=>{let raw=(i.value||'').trim();if(!raw)return;let type='';let m=raw.match(/themoviedb\.org\/(movie|tv)\/(\d+)/i);let id=m?m[2]:(raw.match(/\d+/)||[])[0];if(m)type=m[1];if(!id)return alert('TMDB inválido');b.disabled=true;b.textContent='Importando...';try{let u=`/api/tmdb/import?id=${encodeURIComponent(id)}${type?`&type=${type}`:''}`;let r=await fetch(u);let d=await r.json();if(!r.ok||d.error)throw new Error(d.error||'Falha');document.getElementById('stitle').value=d.title||'';document.getElementById('sdesc').value=d.description||'';document.getElementById('simage').value=d.image||'';document.getElementById('sid').value=d.tmdb_id||id;document.getElementById('stype').value=d.content_type||'Filme';document.getElementById('scat').value=(d.genres||[]).join(', ')||d.category||'';}catch(e){alert(e.message)}finally{b.disabled=false;b.textContent='Importar'}}})();
+</script>
+{% endblock %}
