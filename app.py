@@ -1358,17 +1358,17 @@ def embreve_page():
 # =========================================================
 
 STREAMING_PROVIDERS = {
-    # Logos servidos pelo CDN oficial do Simple Icons no navegador. O texto `mark`
-    # continua como fallback caso a conexão bloqueie algum SVG externo.
-    "netflix": {"name": "Netflix", "mark": "NETFLIX", "theme": "#e50914", "logo": "https://cdn.simpleicons.org/netflix/E50914"},
-    "disney": {"name": "Disney+", "mark": "Disney+", "theme": "#58a6ff", "logo": "https://cdn.simpleicons.org/disneyplus/FFFFFF"},
-    "max": {"name": "Max", "mark": "max", "theme": "#8d64ff", "logo": "https://cdn.simpleicons.org/max/FFFFFF"},
-    "prime": {"name": "Prime Video", "mark": "prime video", "theme": "#00a8e1", "logo": "https://cdn.simpleicons.org/primevideo/00A8E1"},
-    "marvel": {"name": "Marvel", "mark": "MARVEL", "theme": "#ed1d24", "logo": "https://cdn.simpleicons.org/marvel/FFFFFF"},
-    "dc": {"name": "DC", "mark": "DC", "theme": "#2b7fff", "logo": "https://cdn.simpleicons.org/dcentertainment/2B7FFF"},
-    "bond": {"name": "007", "mark": "007", "theme": "#d8bb78", "logo": "https://cdn.simpleicons.org/007/FFFFFF"},
-    "starwars": {"name": "Star Wars", "mark": "STAR WARS", "theme": "#ffe81f", "logo": "https://cdn.simpleicons.org/starwars/FFFFFF"},
-    "harrypotter": {"name": "Harry Potter", "mark": "HARRY POTTER", "theme": "#d8c59a", "logo": None},
+    # Logos locais extraídos da referência enviada pelo usuário. Assim não dependemos
+    # de CDN externo e evitamos ícone quebrado no navegador/app.
+    "netflix": {"name": "Netflix", "mark": "NETFLIX", "theme": "#e50914", "logo": "/static/images/streaming_logos/netflix.png"},
+    "disney": {"name": "Disney+", "mark": "Disney+", "theme": "#58a6ff", "logo": "/static/images/streaming_logos/disney.png"},
+    "max": {"name": "Max", "mark": "max", "theme": "#8d64ff", "logo": "/static/images/streaming_logos/max.png"},
+    "prime": {"name": "Prime Video", "mark": "prime video", "theme": "#00a8e1", "logo": "/static/images/streaming_logos/prime.png"},
+    "marvel": {"name": "Marvel", "mark": "MARVEL", "theme": "#ed1d24", "logo": "/static/images/streaming_logos/marvel.png"},
+    "dc": {"name": "DC", "mark": "DC", "theme": "#2b7fff", "logo": "/static/images/streaming_logos/dc.png"},
+    "bond": {"name": "007", "mark": "007", "theme": "#d8bb78", "logo": "/static/images/streaming_logos/bond.png"},
+    "starwars": {"name": "Star Wars", "mark": "STAR WARS", "theme": "#ffe81f", "logo": "/static/images/streaming_logos/starwars.png"},
+    "harrypotter": {"name": "Harry Potter", "mark": "HARRY POTTER", "theme": "#d8c59a", "logo": "/static/images/streaming_logos/harrypotter.png"},
 }
 
 STREAMING_SECTIONS = ["Top 10 Hoje", "Lançamentos", "Novidades", "10 Mais Assistidos"]
