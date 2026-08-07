@@ -1371,7 +1371,7 @@ STREAMING_PROVIDERS = {
     "harrypotter": {"name": "Harry Potter", "mark": "HARRY POTTER", "theme": "#d8c59a", "logo": "/static/images/streaming_logos/harrypotter.png"},
 }
 
-STREAMING_SECTIONS = ["Lançamentos", "Novidades", "10 Mais Assistidos"]
+STREAMING_SECTIONS = ["Top 10 Hoje", "Lançamentos", "Novidades", "10 Mais Assistidos"]
 
 
 def _streaming_items(provider=None):
@@ -1382,11 +1382,9 @@ def _streaming_items(provider=None):
 
 
 def _streaming_groups(items):
-    # No hub Streamings existem somente estas três prateleiras.
-    # Nomes antigos das versões anteriores são migrados visualmente para
-    # não perder conteúdos já cadastrados no banco.
+    # No hub Streamings ficam estas quatro prateleiras da referência.
+    # Mantemos Top 10 Hoje separado de 10 Mais Assistidos.
     aliases = {
-        "Top 10 Hoje": "10 Mais Assistidos",
         "Mais Assistidos Hoje": "10 Mais Assistidos",
         "10 Mais Assistidos Hoje": "10 Mais Assistidos",
         "Adicionados Recentemente": "Novidades",
@@ -1404,7 +1402,7 @@ def _streaming_groups(items):
         groups[section].append(item)
 
     for name in groups:
-        if name == "10 Mais Assistidos":
+        if name in ("Top 10 Hoje", "10 Mais Assistidos"):
             groups[name].sort(key=lambda x: (x.streaming_rank or 999, -x.id))
         else:
             groups[name].sort(key=lambda x: x.id, reverse=True)

@@ -2268,3 +2268,8 @@ body:has(.browse-hero-shell) .browse-featured .featured-info{
   .sx-top10 .sx-card{flex-basis:180px!important;height:270px!important;margin-left:36px!important}
   .sx-rank{left:-40px!important;font-size:110px!important}
 }
+
+/* ===== STREAMINGS V32 - ajustes solicitados ===== */
+/* O PNG antigo do Max tinha espaço vazio assimétrico; o asset V32 foi recortado e este ajuste garante centro óptico. */
+.sx-p-max img{display:block!important;margin:auto!important;object-position:center center!important;transform:none!important}
+.sx-p-max:hover img{transform:scale(1.065)!important}
