@@ -24,26 +24,11 @@
     {% endfor %}
   </section>
 
-  <div id="catalogo" class="sx-catalog">
-    {% for section,items in sections %}
-    <section class="sx-shelf {% if section in ['Top 10 Hoje','10 Mais Assistidos'] %}sx-top10{% endif %}">
-      <div class="sx-title"><i></i><h2>{{ section }}</h2></div>
-      <div class="sx-rail-wrap">
-        <button class="sx-arrow left" onclick="sxScroll(this,-1)" aria-label="Anterior">‹</button>
-        <div class="sx-rail">
-          {% for item in items %}
-          <a class="sx-card" href="{{ url_for('watch', id=item.id) }}">
-            {% if section in ['Top 10 Hoje','10 Mais Assistidos'] %}<b class="sx-rank">{{ item.streaming_rank or loop.index }}</b>{% endif %}
-            <img src="{{ item.image }}" alt="{{ item.title }}"><span class="sx-card-title">{{ item.title }}</span><span class="sx-play">▶</span>
-          </a>
-          {% endfor %}
-        </div>
-        <button class="sx-arrow right" onclick="sxScroll(this,1)" aria-label="Próximo">›</button>
-      </div>
-    </section>
-    {% else %}
-      <div class="sx-empty-state"><h2>Nenhum conteúdo de streaming cadastrado ainda.</h2><p>Assim que você cadastrar títulos no Admin Streamings, os filmes e séries aparecem aqui diretamente — sem precisar abrir uma plataforma primeiro.</p></div>
-    {% endfor %}
+  <div id="catalogo" class="sx-catalog sx-provider-only">
+    <div class="sx-empty-state">
+      <h2>Escolha uma plataforma</h2>
+      <p>Os rankings, lançamentos e categorias são separados dentro de Netflix, Disney+, Max, Prime Video, Marvel, DC, 007, Star Wars e Harry Potter.</p>
+    </div>
   </div>
 
   <footer class="sx-footer"><b>LINK<span>FLIX</span></b><p>Um só lugar para organizar os filmes, séries e animações da sua família.</p><small>© 2026 Linkflix</small></footer>

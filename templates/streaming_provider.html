@@ -19,12 +19,12 @@
 
   <main class="sp-catalog">
   {% for section,items in sections %}
-    <section class="sp-shelf {% if section == 'Top 10 Hoje' %}sp-top10{% endif %}">
+    <section class="sp-shelf {% if section in ['Top 10 Hoje','10 Mais Assistidos'] %}sp-top10{% endif %}">
       <h2>{{ section }}</h2>
       <div class="sp-rail-wrap"><button onclick="spScroll(this,-1)">‹</button><div class="sp-rail">
       {% for item in items %}
         <a href="{{ url_for('watch',id=item.id) }}" class="sp-card">
-          {% if section == 'Top 10 Hoje' %}<b>{{ item.streaming_rank or loop.index }}</b>{% endif %}
+          {% if section in ['Top 10 Hoje','10 Mais Assistidos'] %}<b>{{ item.streaming_rank or loop.index }}</b>{% endif %}
           <img src="{{ item.image }}" alt="{{ item.title }}"><div class="sp-hover"><strong>{{ item.title }}</strong><span>▶</span></div>
         </a>
       {% endfor %}
