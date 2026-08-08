@@ -2273,3 +2273,41 @@ body:has(.browse-hero-shell) .browse-featured .featured-info{
 /* O PNG antigo do Max tinha espaço vazio assimétrico; o asset V32 foi recortado e este ajuste garante centro óptico. */
 .sx-p-max img{display:block!important;margin:auto!important;object-position:center center!important;transform:none!important}
 .sx-p-max:hover img{transform:scale(1.065)!important}
+
+/* ===== STREAMINGS V33 - categorias internas por plataforma ===== */
+.sp-catalog{padding-top:14px!important}
+.sp-shelf{padding:22px 4.2vw 16px!important}
+.sp-shelf h2{
+  position:relative;margin:0 0 18px!important;padding-left:14px!important;
+  font-size:27px!important;font-weight:650!important;color:#8f949c!important;
+  letter-spacing:-.35px!important;
+}
+.sp-shelf h2::before{
+  content:"";position:absolute;left:0;top:4px;width:4px;height:25px;border-radius:4px;
+  background:linear-gradient(#63c6ff,#276ec4);box-shadow:0 0 10px rgba(65,163,255,.24)
+}
+.sp-rail-wrap{position:relative;display:flex;align-items:center;gap:0}
+.sp-rail{display:flex;gap:16px;overflow-x:auto;overflow-y:hidden;scroll-behavior:smooth;padding:8px 2px 16px;scrollbar-width:none}
+.sp-rail::-webkit-scrollbar{display:none}
+.sp-rail-wrap>button{
+  position:absolute;z-index:8;top:50%;transform:translateY(-50%);width:42px;height:74px;border:0;
+  background:linear-gradient(90deg,rgba(3,7,13,.94),rgba(3,7,13,.16));color:#fff;font-size:34px;
+  cursor:pointer;opacity:.22;transition:.2s
+}
+.sp-rail-wrap>button:first-child{left:-4px}.sp-rail-wrap>button:last-child{right:-4px;transform:translateY(-50%) rotate(180deg)}
+.sp-rail-wrap:hover>button{opacity:.9}
+.sp-card{
+  flex:0 0 clamp(170px,12.3vw,220px)!important;height:clamp(255px,18.4vw,330px)!important;
+  border-radius:22px!important;background:#0c1016!important;overflow:hidden!important;
+  box-shadow:none!important;border:0!important;transition:transform .2s ease!important
+}
+.sp-card img{width:100%!important;height:100%!important;object-fit:cover!important;transform:none!important}
+.sp-card:hover{transform:translateY(-5px) scale(1.018)!important;z-index:3!important}
+.sp-card:hover img{transform:none!important;filter:brightness(.78)!important}
+.sp-hover{padding:44px 14px 13px!important;background:linear-gradient(transparent,rgba(0,0,0,.88))!important}
+.sp-top10 .sp-card{margin-left:0!important}
+.sp-top10 .sp-card>b{display:none!important}
+@media(max-width:700px){
+  .sp-shelf{padding:17px 18px 10px!important}.sp-shelf h2{font-size:22px!important;margin-bottom:12px!important}
+  .sp-card{flex-basis:148px!important;height:222px!important;border-radius:17px!important}.sp-rail{gap:11px!important}
+}

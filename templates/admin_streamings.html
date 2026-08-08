@@ -17,7 +17,8 @@
         <div class="sa-field"><label>Imagem / backdrop</label><input name="image" id="simage" required></div>
         <div class="sa-field"><label>Gêneros</label><input name="category" id="scat"></div>
         <div class="sa-field"><label>Descrição</label><textarea name="description" id="sdesc"></textarea></div>
-        <div class="sa-two"><div class="sa-field"><label>Área da página</label><select name="streaming_section">{% for x in sections %}<option>{{x}}</option>{% endfor %}<option>Destaques para você</option><option>Originais</option><option>Para assistir em família</option></select></div><div class="sa-field"><label>Posição Top 10</label><input name="streaming_rank" type="number" min="1" max="10" placeholder="1 a 10"></div></div>
+        <div class="sa-two"><div class="sa-field"><label>Categoria dentro de {{ providers[selected].name }}</label><select name="streaming_section">{% for x in sections %}<option>{{x}}</option>{% endfor %}</select></div><div class="sa-field"><label>Categoria na tela Streamings</label><select name="streaming_hub_section">{% for x in hub_sections %}<option>{{x}}</option>{% endfor %}</select></div></div>
+        <div class="sa-field"><label>Posição no ranking (opcional)</label><input name="streaming_rank" type="number" min="1" max="10" placeholder="1 a 10 para Mais Assistidos / Top 10"></div>
         <label class="sa-check"><input type="checkbox" name="featured"> Usar como banner principal desta plataforma</label>
         <label class="sa-check"><input type="checkbox" name="premium"> Conteúdo Premium</label>
         <button class="sa-save" type="submit">＋ Adicionar à {{ providers[selected].name }}</button>
@@ -25,7 +26,7 @@
     </section>
 
     <section class="sa-panel"><h2>Conteúdos de {{ providers[selected].name }}</h2><div class="sa-list">
-      {% for c in contents %}<article><img src="{{c.image}}"><div><b>{{c.title}}</b><small>{{c.streaming_section}}{% if c.streaming_rank %} · #{{c.streaming_rank}}{% endif %}{% if c.streaming_featured %} · BANNER{% endif %}</small></div><a href="{{url_for('watch',id=c.id)}}">Ver</a><form method="post"><input type="hidden" name="action" value="remove"><input type="hidden" name="content_id" value="{{c.id}}"><button>Remover</button></form></article>{% else %}<p class="sa-muted">Nada cadastrado nesta plataforma.</p>{% endfor %}
+      {% for c in contents %}<article><img src="{{c.image}}"><div><b>{{c.title}}</b><small>{{c.streaming_section}} · Streamings: {{c.streaming_hub_section or 'Novidades'}}{% if c.streaming_rank %} · #{{c.streaming_rank}}{% endif %}{% if c.streaming_featured %} · BANNER{% endif %}</small></div><a href="{{url_for('watch',id=c.id)}}">Ver</a><form method="post"><input type="hidden" name="action" value="remove"><input type="hidden" name="content_id" value="{{c.id}}"><button>Remover</button></form></article>{% else %}<p class="sa-muted">Nada cadastrado nesta plataforma.</p>{% endfor %}
     </div></section>
   </div>
 </div>
