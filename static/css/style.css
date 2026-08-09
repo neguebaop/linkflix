@@ -2311,3 +2311,10 @@ body:has(.browse-hero-shell) .browse-featured .featured-info{
   .sp-shelf{padding:17px 18px 10px!important}.sp-shelf h2{font-size:22px!important;margin-bottom:12px!important}
   .sp-card{flex-basis:148px!important;height:222px!important;border-radius:17px!important}.sp-rail{gap:11px!important}
 }
+
+/* ===== STREAMINGS V35 — HUB E PLATAFORMAS 100% SEPARADOS ===== */
+.sa-hub-tab{font-weight:950!important;letter-spacing:.6px;color:#8bcfff!important}
+.sa-hub-tab.on{color:#fff!important;background:rgba(54,168,255,.10)}
+.sa-note{margin:-7px 0 18px;color:#8995a4;font-size:13px;line-height:1.45}
+.sx-catalog{padding-top:18px!important;padding-bottom:10px}
+.sx-empty-state{min-height:180px}

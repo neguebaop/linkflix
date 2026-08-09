@@ -1360,8 +1360,6 @@ def embreve_page():
 # =========================================================
 
 STREAMING_PROVIDERS = {
-    # Logos locais extraídos da referência enviada pelo usuário. Assim não dependemos
-    # de CDN externo e evitamos ícone quebrado no navegador/app.
     "netflix": {"name": "Netflix", "mark": "NETFLIX", "theme": "#e50914", "logo": "/static/images/streaming_logos/netflix.png"},
     "disney": {"name": "Disney+", "mark": "Disney+", "theme": "#58a6ff", "logo": "/static/images/streaming_logos/disney.png"},
     "max": {"name": "Max", "mark": "max", "theme": "#8d64ff", "logo": "/static/images/streaming_logos/max.png"},
@@ -1373,16 +1371,20 @@ STREAMING_PROVIDERS = {
     "harrypotter": {"name": "Harry Potter", "mark": "HARRY POTTER", "theme": "#d8c59a", "logo": "/static/images/streaming_logos/harrypotter.png"},
 }
 
-# V34: cada plataforma tem suas próprias prateleiras. A página /streamings
-# serve apenas como portal para Netflix/Disney+/Max/etc.; não mistura títulos
-# de plataformas diferentes em um Top 10 global.
-STREAMING_PROVIDER_SECTIONS = [
+# V35: a tela /streamings passa a ser uma vitrine própria, SEM misturar com
+# Netflix/Disney+/Max/etc. Cada plataforma também tem suas próprias prateleiras.
+STREAMING_HUB_PROVIDER = "__streamings__"
+STREAMING_HUB_SECTIONS = [
     "Top 10 Hoje",
     "Lançamentos",
     "Novidades",
     "10 Mais Assistidos",
+]
+STREAMING_PROVIDER_SECTIONS = [
+    "Top 10 Hoje",
     "Adicionados Recentemente",
     "Mais Assistidos Hoje",
+    "Lançamentos",
     "Filmes Populares",
     "Explore o Catálogo",
 ]
@@ -1395,9 +1397,8 @@ def _streaming_items(provider=None):
     return q.order_by(Content.id.desc()).all()
 
 
-def _normalize_streaming_section(raw):
-    """Normaliza nomes antigos sem misturar uma plataforma com outra."""
-    raw = (raw or "Adicionados Recentemente").strip() or "Adicionados Recentemente"
+def _normalize_streaming_section(raw, allowed=None):
+    raw = (raw or "").strip()
     aliases = {
         "Recentes": "Adicionados Recentemente",
         "Adicionado Recentemente": "Adicionados Recentemente",
@@ -1406,60 +1407,91 @@ def _normalize_streaming_section(raw):
         "Catalogo": "Explore o Catálogo",
         "10 Mais Assistidos Hoje": "10 Mais Assistidos",
     }
-    return aliases.get(raw, raw)
+    raw = aliases.get(raw, raw)
+    if allowed:
+        if raw in allowed:
+            return raw
+        return allowed[0]
+    return raw
 
 
-def _migrate_streaming_sections_v34():
-    """Corrige cadastros da V33 que foram parar na coluna da tela Streamings.
+def _looks_like_harry_potter(item):
+    """Recupera o erro da V34 que colocou Top 10 de Harry Potter em Netflix."""
+    text_value = " ".join([
+        item.title or "", item.category or "", item.description or ""
+    ]).lower()
+    needles = (
+        "harry potter", "hogwarts", "pedra filosofal", "câmara secreta",
+        "camara secreta", "prisioneiro de azkaban", "cálice de fogo",
+        "calice de fogo", "ordem da fênix", "ordem da fenix",
+        "enigma do príncipe", "enigma do principe", "relíquias da morte",
+        "reliquias da morte",
+    )
+    return any(x in text_value for x in needles)
 
-    Na V33 havia dois seletores (categoria da plataforma + categoria do hub).
-    Agora a categoria é sempre da plataforma escolhida. Assim um Top 10 de
-    Harry Potter nunca aparece no /streamings nem em outra plataforma.
+
+def _migrate_streamings_v35():
+    """Migração segura: nunca manda conteúdo de uma plataforma para o hub.
+
+    Também corrige o caso reportado em que um Top 10 claramente de Harry Potter
+    havia sido salvo como Netflix na versão anterior.
     """
     changed = False
+    valid_providers = set(STREAMING_PROVIDERS) | {STREAMING_HUB_PROVIDER}
     for item in Content.query.filter(Content.streaming_provider.isnot(None)).all():
-        hub = (getattr(item, "streaming_hub_section", None) or "").strip()
-        current = (item.streaming_section or "").strip()
-        if hub:
-            # Se o usuário escolheu uma categoria no seletor antigo do hub,
-            # ela representa a intenção mais recente e passa a valer dentro
-            # da plataforma selecionada.
-            normalized = _normalize_streaming_section(hub)
-            if normalized in STREAMING_PROVIDER_SECTIONS and current != normalized:
-                item.streaming_section = normalized
-                changed = True
+        provider = (item.streaming_provider or "").strip().lower()
+        if provider not in valid_providers:
+            # Não apaga o cadastro; apenas o devolve para a vitrine principal.
+            item.streaming_provider = STREAMING_HUB_PROVIDER
+            provider = STREAMING_HUB_PROVIDER
+            changed = True
+
+        if provider == "netflix" and _looks_like_harry_potter(item) and (item.streaming_section or "") == "Top 10 Hoje":
+            item.streaming_provider = "harrypotter"
+            provider = "harrypotter"
+            changed = True
+
+        allowed = STREAMING_HUB_SECTIONS if provider == STREAMING_HUB_PROVIDER else STREAMING_PROVIDER_SECTIONS
+        normalized = _normalize_streaming_section(item.streaming_section, allowed)
+        if item.streaming_section != normalized:
+            item.streaming_section = normalized
+            changed = True
+
+        # O seletor antigo do hub não é mais usado. Não copiamos seu valor para
+        # a plataforma, pois isso foi a causa da mistura na V34.
+        if getattr(item, "streaming_hub_section", None):
             item.streaming_hub_section = None
             changed = True
+
     if changed:
         db.session.commit()
 
-def _streaming_provider_groups(items):
-    """Prateleiras independentes de cada Netflix/Disney+/Max/etc."""
-    groups = {name: [] for name in STREAMING_PROVIDER_SECTIONS}
+
+def _streaming_groups(items, allowed_sections):
+    groups = {name: [] for name in allowed_sections}
     for item in items:
-        section = _normalize_streaming_section(item.streaming_section)
-        if section not in groups:
-            section = "Explore o Catálogo"
+        section = _normalize_streaming_section(item.streaming_section, allowed_sections)
         groups[section].append(item)
     for name in groups:
         if name in ("Top 10 Hoje", "10 Mais Assistidos", "Mais Assistidos Hoje"):
             groups[name].sort(key=lambda x: (x.streaming_rank or 999, -x.id))
         else:
             groups[name].sort(key=lambda x: x.id, reverse=True)
-    return [(name, groups[name]) for name in STREAMING_PROVIDER_SECTIONS if groups[name]]
+    return [(name, groups[name]) for name in allowed_sections if groups[name]]
 
 
 @app.route("/streamings")
 @login_required
 @require_active_profile
 def streamings_page():
-    _migrate_streaming_sections_v34()
-    # A tela principal é somente o portal das plataformas. Conteúdo e rankings
-    # aparecem apenas dentro da plataforma escolhida.
+    _migrate_streamings_v35()
+    items = _streaming_items(STREAMING_HUB_PROVIDER)
+    featured = next((x for x in items if x.streaming_featured), None) or (items[0] if items else None)
     return render_template(
         "streamings.html",
         providers=STREAMING_PROVIDERS,
-        featured=None,
+        sections=_streaming_groups(items, STREAMING_HUB_SECTIONS),
+        featured=featured,
         active_profile=get_active_profile(),
     )
 
@@ -1468,7 +1500,7 @@ def streamings_page():
 @login_required
 @require_active_profile
 def streaming_provider_page(provider):
-    _migrate_streaming_sections_v34()
+    _migrate_streamings_v35()
     cfg = STREAMING_PROVIDERS.get(provider)
     if not cfg:
         return redirect(url_for("streamings_page"))
@@ -1479,7 +1511,7 @@ def streaming_provider_page(provider):
         provider_key=provider,
         provider=cfg,
         providers=STREAMING_PROVIDERS,
-        sections=_streaming_provider_groups(items),
+        sections=_streaming_groups(items, STREAMING_PROVIDER_SECTIONS),
         featured=featured,
     )
 
@@ -1488,10 +1520,16 @@ def streaming_provider_page(provider):
 @login_required
 @admin_required
 def admin_streamings():
+    admin_targets = {
+        STREAMING_HUB_PROVIDER: {"name": "Tela Streamings", "mark": "STREAMINGS", "theme": "#36a8ff", "logo": None},
+        **STREAMING_PROVIDERS,
+    }
+
     if request.method == "POST":
         action = request.form.get("action", "add")
         if action == "remove":
             item = Content.query.get_or_404(request.form.get("content_id", type=int))
+            old_provider = item.streaming_provider or STREAMING_HUB_PROVIDER
             item.streaming_provider = None
             item.streaming_section = None
             item.streaming_hub_section = None
@@ -1499,22 +1537,22 @@ def admin_streamings():
             item.streaming_featured = False
             db.session.commit()
             flash("Conteúdo removido da área Streamings. Ele continua no catálogo normal.")
-            return redirect(url_for("admin_streamings"))
+            return redirect(url_for("admin_streamings", provider=old_provider if old_provider in admin_targets else STREAMING_HUB_PROVIDER))
 
         title = (request.form.get("title") or "").strip()
-        provider = (request.form.get("provider") or "").strip().lower()
-        section = _normalize_streaming_section(request.form.get("streaming_section"))
-        if provider not in STREAMING_PROVIDERS:
-            flash("Streaming inválido.")
-            return redirect(url_for("admin_streamings"))
+        provider = (request.form.get("provider") or STREAMING_HUB_PROVIDER).strip().lower()
+        if provider not in admin_targets:
+            flash("Destino inválido.")
+            return redirect(url_for("admin_streamings", provider=STREAMING_HUB_PROVIDER))
 
+        allowed_sections = STREAMING_HUB_SECTIONS if provider == STREAMING_HUB_PROVIDER else STREAMING_PROVIDER_SECTIONS
+        section = _normalize_streaming_section(request.form.get("streaming_section"), allowed_sections)
         tmdb_id = normalize_tmdb_id((request.form.get("tmdb_id") or "").strip())
         content_type = (request.form.get("content_type") or "Filme").strip()
         image = (request.form.get("image") or "").strip()
         description = (request.form.get("description") or "").strip()
         category = (request.form.get("category") or "").strip()
 
-        # Reaproveita um conteúdo existente, evitando duplicar o filme no banco.
         existing = None
         if tmdb_id:
             existing = Content.query.filter_by(tmdb_id=tmdb_id).first()
@@ -1532,7 +1570,7 @@ def admin_streamings():
         else:
             if not title or not image:
                 flash("Preencha pelo menos título e imagem.")
-                return redirect(url_for("admin_streamings"))
+                return redirect(url_for("admin_streamings", provider=provider))
             item = Content(
                 title=title,
                 image=image,
@@ -1544,7 +1582,6 @@ def admin_streamings():
             )
             db.session.add(item)
 
-        # Um título pertence a uma vitrine principal por vez nesta área.
         if "featured" in request.form:
             Content.query.filter_by(streaming_provider=provider, streaming_featured=True).update({"streaming_featured": False})
         item.streaming_provider = provider
@@ -1554,20 +1591,23 @@ def admin_streamings():
         item.streaming_featured = ("featured" in request.form)
         item.is_premium = ("premium" in request.form)
         db.session.commit()
-        flash(f'"{item.title}" adicionado em {STREAMING_PROVIDERS[provider]["name"]} / {section}.')
+        flash(f'"{item.title}" adicionado em {admin_targets[provider]["name"]} / {section}.')
         return redirect(url_for("admin_streamings", provider=provider))
 
-    _migrate_streaming_sections_v34()
-    selected = (request.args.get("provider") or "netflix").lower()
-    if selected not in STREAMING_PROVIDERS:
-        selected = "netflix"
+    _migrate_streamings_v35()
+    selected = (request.args.get("provider") or STREAMING_HUB_PROVIDER).lower()
+    if selected not in admin_targets:
+        selected = STREAMING_HUB_PROVIDER
+    allowed_sections = STREAMING_HUB_SECTIONS if selected == STREAMING_HUB_PROVIDER else STREAMING_PROVIDER_SECTIONS
     contents = Content.query.filter_by(streaming_provider=selected).order_by(Content.streaming_section.asc(), Content.streaming_rank.asc(), Content.id.desc()).all()
     return render_template(
         "admin_streamings.html",
         providers=STREAMING_PROVIDERS,
-        sections=STREAMING_PROVIDER_SECTIONS,
+        admin_targets=admin_targets,
+        sections=allowed_sections,
         selected=selected,
         contents=contents,
+        hub_key=STREAMING_HUB_PROVIDER,
     )
 
 
