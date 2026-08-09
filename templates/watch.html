@@ -2,62 +2,44 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>{{ content.title }} - Linkflix</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <style>
-  .watch-player-toolbar {
-    display:flex; justify-content:flex-end; align-items:center; gap:8px;
-    margin:0 0 8px;
-  }
-  .watch-player-shell {
-    position:relative; background:#000; border-radius:14px; overflow:hidden;
-    width:100%; aspect-ratio:16/9; min-height:320px;
-  }
-  .watch-player-shell iframe { display:block; width:100%; height:100%; min-height:320px; border:0; background:#000; }
-  .linkflix-fullscreen-btn {
-    position:relative; z-index:100;
-    display:inline-flex; align-items:center; gap:8px;
-    border:1px solid rgba(255,255,255,.24); border-radius:8px;
-    padding:7px 10px; color:#fff; background:#e50914;
-    font-size:13px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.30);
-  }
-  .linkflix-fullscreen-btn:hover { background:#ff1f2b; transform:translateY(-1px); }
-  .linkflix-fullscreen-btn svg { width:14px; height:14px; fill:currentColor; }
-  .watch-player-shell.cinema-mode {
-    position:fixed; inset:0; z-index:99999; width:100vw; height:100vh;
-    aspect-ratio:auto; min-height:100vh; border-radius:0; background:#000;
-  }
-  .watch-player-shell.cinema-mode iframe { width:100%; height:100%; min-height:100%; }
-  .cinema-exit {
-    display:none; position:absolute; top:12px; right:12px; z-index:100001;
-    border:1px solid rgba(255,255,255,.25); border-radius:8px; padding:7px 10px;
-    background:rgba(0,0,0,.72); color:#fff; font-weight:800; cursor:pointer;
-  }
-  .watch-player-shell.cinema-mode .cinema-exit { display:block; }
-  .player-loading {
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    color:#ddd; font-weight:700; background:#000; z-index:2; pointer-events:none;
-    transition:opacity .25s ease;
-  }
-  .player-loading.hidden { opacity:0; visibility:hidden; }
-  .watch-player-shell:fullscreen,
-  .watch-player-shell:-webkit-full-screen { width:100vw; height:100vh; border-radius:0; background:#000; }
-  .watch-player-shell:fullscreen iframe,
-  .watch-player-shell:-webkit-full-screen iframe { width:100%; height:100%; min-height:100%; }
+  .watch-player-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:0 0 8px}
+  .watch-player-shell{position:relative;background:#000;border-radius:14px;overflow:hidden;width:100%;aspect-ratio:16/9;min-height:320px;isolation:isolate}
+  .watch-player-shell iframe{display:block;width:100%;height:100%;min-height:320px;border:0;background:#000;position:relative;z-index:1}
+  .linkflix-fullscreen-btn{position:relative;z-index:100;display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.24);border-radius:8px;padding:7px 10px;color:#fff;background:#e50914;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.30)}
+  .linkflix-fullscreen-btn:hover{background:#ff1f2b;transform:translateY(-1px)}
+  .linkflix-fullscreen-btn svg{width:14px;height:14px;fill:currentColor}
+  .watch-player-shell.cinema-mode{position:fixed;inset:0;z-index:99999;width:100vw;height:100dvh;aspect-ratio:auto;min-height:100dvh;border-radius:0;background:#000}
+  .watch-player-shell.cinema-mode iframe{width:100%;height:100%;min-height:100%}
+  .cinema-exit{display:none;position:absolute;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:100001;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:7px 10px;background:rgba(0,0,0,.72);color:#fff;font-weight:800;cursor:pointer}
+  .watch-player-shell.cinema-mode .cinema-exit{display:block}
+  .player-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#ddd;font-weight:700;background:#000;z-index:4;pointer-events:none;transition:opacity .25s ease}
+  .player-loading.hidden{opacity:0;visibility:hidden}
+  .ios-start{display:none;position:absolute;inset:0;z-index:8;background:radial-gradient(circle at 50% 35%,#191919 0,#080808 55%,#000 100%);align-items:center;justify-content:center;text-align:center;padding:24px}
+  .ios-start.show{display:flex}
+  .ios-start-card{max-width:430px;color:#fff}
+  .ios-start-icon{width:70px;height:70px;border-radius:50%;margin:0 auto 16px;background:#e50914;display:grid;place-items:center;font-size:31px;padding-left:4px;box-shadow:0 12px 35px rgba(229,9,20,.28)}
+  .ios-start-title{font-size:20px;font-weight:900;margin-bottom:7px}.ios-start-text{font-size:13px;line-height:1.45;color:#bcbcbc;margin-bottom:16px}
+  .ios-start-btn,.ios-fallback-btn{border:0;border-radius:8px;background:#e50914;color:#fff;font-weight:900;padding:11px 18px;cursor:pointer;font-size:14px}
+  .ios-fallback{display:none;position:absolute;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:9;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:10px;background:rgba(0,0,0,.82);color:#ddd;font-size:12px;border:1px solid rgba(255,255,255,.12)}
+  .ios-fallback.show{display:flex}.ios-fallback-btn{padding:8px 11px;font-size:12px;white-space:nowrap}
+  .ios-note{display:none;margin:10px 0 0;color:#9b9b9b;font-size:12px;line-height:1.4}.ios-note.show{display:block}
+  .watch-player-shell:fullscreen,.watch-player-shell:-webkit-full-screen{width:100vw;height:100vh;border-radius:0;background:#000}
+  .watch-player-shell:fullscreen iframe,.watch-player-shell:-webkit-full-screen iframe{width:100%;height:100%;min-height:100%}
+  @media(max-width:700px){.watch-player-shell{min-height:220px;border-radius:8px}.watch-player-shell iframe{min-height:220px}.watch-player-toolbar{margin-bottom:6px}.linkflix-fullscreen-btn{font-size:12px;padding:6px 9px}}
 </style>
 </head>
-
 <body class="watch-body">
-
 <div class="watch-topbar">
   <a href="{{ url_for('home') }}" class="watch-back">← Voltar</a>
-
   <div class="watch-title-wrap">
     <div class="watch-title">{{ content.title }}</div>
-    <div class="watch-sub">
-      {{ content.content_type }}{% if content.category %} • {{ content.category }}{% endif %}
-    </div>
+    <div class="watch-sub">{{ content.content_type }}{% if content.category %} • {{ content.category }}{% endif %}</div>
   </div>
 </div>
 
@@ -73,30 +55,45 @@
     <div class="watch-player-shell" id="playerShell">
       <div class="player-loading" id="playerLoading">Carregando filme...</div>
       <button type="button" class="cinema-exit" id="cinemaExit">✕ Sair</button>
+      <div class="ios-start" id="iosStart">
+        <div class="ios-start-card">
+          <div class="ios-start-icon">▶</div>
+          <div class="ios-start-title">Reproduzir no iPhone</div>
+          <div class="ios-start-text">O iOS precisa que o player seja iniciado por um toque. Isso evita a tela preta do Safari/WebView.</div>
+          <button type="button" class="ios-start-btn" id="iosStartBtn">▶ Iniciar filme</button>
+        </div>
+      </div>
+      <div class="ios-fallback" id="iosFallback">
+        <span>Se o vídeo continuar preto no iPhone:</span>
+        <button type="button" class="ios-fallback-btn" id="iosDirectBtn">Abrir player compatível</button>
+      </div>
       {% if not is_series %}
         <iframe id="contentFrame"
           data-src="https://playerflixapi.com/filme/{{ content.tmdb_id }}"
           src="about:blank"
+          title="Player de {{ content.title }}"
           loading="eager"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock allow-popups allow-popups-to-escape-sandbox"
           referrerpolicy="no-referrer"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true">
+          allowfullscreen webkitallowfullscreen mozallowfullscreen>
         </iframe>
       {% else %}
         <iframe id="seriesFrame"
           src="about:blank"
+          title="Player de {{ content.title }}"
           loading="eager"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock allow-popups allow-popups-to-escape-sandbox"
           referrerpolicy="no-referrer"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true">
+          allowfullscreen webkitallowfullscreen mozallowfullscreen>
         </iframe>
       {% endif %}
     </div>
+    <div class="ios-note" id="iosNote">No iPhone/iPad, o Linkflix inicia o player somente depois do seu toque para respeitar as regras de reprodução do iOS.</div>
 
     {% if is_series %}
-      <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+      <div style="margin-top:15px;display:flex;gap:10px;flex-wrap:wrap;">
         <div><label>Temporada</label><br><select id="seasonSelect"></select></div>
         <div><label>Episódio</label><br><select id="episodeSelect"></select></div>
       </div>
@@ -109,162 +106,127 @@
       <div class="watch-progress-top"><span>Progresso</span><span id="pctText">0%</span></div>
       <div class="watch-progress-bar"><span id="pctBar" style="width:0%"></span></div>
       <div class="watch-progress-actions">
-        <button class="btn-ghost" onclick="setProgress(0)">Recomeçar</button>
-        <button class="btn-ghost" onclick="setProgress(25)">25%</button>
-        <button class="btn-ghost" onclick="setProgress(50)">50%</button>
-        <button class="btn-ghost" onclick="setProgress(75)">75%</button>
-        <button class="btn-primary" onclick="setProgress(95)">Quase no fim</button>
+        <button class="btn-ghost" onclick="setProgress(0)">Recomeçar</button><button class="btn-ghost" onclick="setProgress(25)">25%</button><button class="btn-ghost" onclick="setProgress(50)">50%</button><button class="btn-ghost" onclick="setProgress(75)">75%</button><button class="btn-primary" onclick="setProgress(95)">Quase no fim</button>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-const playerShell = document.getElementById("playerShell");
-const fullscreenBtn = document.getElementById("fullscreenBtn");
-const cinemaExit = document.getElementById("cinemaExit");
-const playerLoading = document.getElementById("playerLoading");
-const initialFrame = document.getElementById("contentFrame") || document.getElementById("seriesFrame");
+const playerShell = document.getElementById('playerShell');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+const cinemaExit = document.getElementById('cinemaExit');
+const playerLoading = document.getElementById('playerLoading');
+const initialFrame = document.getElementById('contentFrame') || document.getElementById('seriesFrame');
+const iosStart = document.getElementById('iosStart');
+const iosStartBtn = document.getElementById('iosStartBtn');
+const iosFallback = document.getElementById('iosFallback');
+const iosDirectBtn = document.getElementById('iosDirectBtn');
+const iosNote = document.getElementById('iosNote');
 
-function openCinemaMode(){
-  playerShell.classList.add("cinema-mode");
-  document.body.style.overflow = "hidden";
+const ua = navigator.userAgent || '';
+const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandaloneIOS = isIOS && (window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches);
+let playerStarted = false;
+let currentPlayerUrl = '';
+let fallbackTimer = null;
+
+function openCinemaMode(){ if(isIOS) return; playerShell.classList.add('cinema-mode'); document.body.style.overflow='hidden'; }
+function closeCinemaMode(){ playerShell.classList.remove('cinema-mode'); document.body.style.overflow=''; }
+cinemaExit.addEventListener('click', closeCinemaMode);
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && playerShell.classList.contains('cinema-mode')) closeCinemaMode(); });
+
+function setFrameUrl(url, fromUserGesture=false){
+  if(!initialFrame || !url) return;
+  currentPlayerUrl = url;
+  playerStarted = true;
+  playerLoading.classList.remove('hidden');
+  iosStart.classList.remove('show');
+  initialFrame.src = url;
+  clearTimeout(fallbackTimer);
+  fallbackTimer = setTimeout(()=>{ if(isIOS) iosFallback.classList.add('show'); }, 7000);
+  if(!isIOS && fromUserGesture===false){ setTimeout(openCinemaMode, 2200); }
 }
-function closeCinemaMode(){
-  playerShell.classList.remove("cinema-mode");
-  document.body.style.overflow = "";
+
+function directOpenForIOS(){
+  const url = currentPlayerUrl || initialFrame?.dataset?.src;
+  if(!url) return;
+  // Em iOS/WebView, navegar a aba atual é mais confiável que window.open e mantém o gesto do usuário.
+  window.location.assign(url);
 }
-cinemaExit.addEventListener("click", closeCinemaMode);
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && playerShell.classList.contains("cinema-mode")) closeCinemaMode();
+iosDirectBtn.addEventListener('click', directOpenForIOS);
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  if(isIOS){
+    iosNote.classList.add('show');
+    iosStart.classList.add('show');
+    playerLoading.classList.add('hidden');
+    if(!{{ 'true' if is_series else 'false' }}) currentPlayerUrl = initialFrame.dataset.src;
+  } else if(initialFrame && initialFrame.dataset.src){
+    setFrameUrl(initialFrame.dataset.src, false);
+  }
 });
 
-// Carrega o player depois que a página já montou. Isso evita o quadro preto em alguns navegadores.
-window.addEventListener("DOMContentLoaded", () => {
-  if (initialFrame && initialFrame.dataset.src) initialFrame.src = initialFrame.dataset.src;
-
-  // O navegador bloqueia tela cheia real sem clique. Este modo cinema ocupa a tela automaticamente.
-  setTimeout(() => {
-    if (initialFrame && initialFrame.src && initialFrame.src !== "about:blank") openCinemaMode();
-  }, 2200);
+iosStartBtn.addEventListener('click', ()=>{
+  {% if is_series %}
+  const s = document.getElementById('seasonSelect')?.value;
+  const e = document.getElementById('episodeSelect')?.value;
+  if(s && e) setFrameUrl(`https://playerflixapi.com/serie/{{ content.tmdb_id }}/${s}/${e}`, true);
+  else { iosStartBtn.textContent='Carregando episódios...'; }
+  {% else %}
+  setFrameUrl(initialFrame.dataset.src, true);
+  {% endif %}
 });
 
-if (initialFrame) {
-  initialFrame.addEventListener("load", () => {
-    setTimeout(() => playerLoading.classList.add("hidden"), 500);
+if(initialFrame){
+  initialFrame.addEventListener('load', ()=>{
+    setTimeout(()=>playerLoading.classList.add('hidden'), 600);
+    // Não escondemos o fallback no iOS: o iframe pode "carregar" e ainda assim o vídeo ficar preto.
   });
 }
-setTimeout(() => playerLoading.classList.add("hidden"), 10000);
+setTimeout(()=>playerLoading.classList.add('hidden'), 12000);
 
 async function toggleFullscreen(){
-  const frame = document.getElementById("contentFrame") || document.getElementById("seriesFrame");
-  const target = playerShell;
-
-  try {
-    closeCinemaMode();
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      if (target.requestFullscreen) {
-        await target.requestFullscreen();
-      } else if (target.webkitRequestFullscreen) {
-        target.webkitRequestFullscreen();
-      } else if (frame && frame.src) {
-        window.open(frame.src, "_blank", "noopener,noreferrer");
-      }
-    } else {
-      if (document.exitFullscreen) await document.exitFullscreen();
-      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-    }
-  } catch (error) {
-    console.error("Não foi possível abrir a tela cheia:", error);
-    if (frame && frame.src) window.open(frame.src, "_blank", "noopener,noreferrer");
+  const frame = initialFrame;
+  if(isIOS){
+    // iOS é mais confiável quando o próprio player recebe o gesto. Se ainda não iniciou, iniciar agora.
+    if(!playerStarted){ iosStartBtn.click(); return; }
+    // Fullscreen de elementos/iframes é inconsistente em WKWebView; modo cinema mantém o vídeo visível.
+    playerShell.classList.toggle('cinema-mode');
+    document.body.style.overflow = playerShell.classList.contains('cinema-mode') ? 'hidden' : '';
+    return;
   }
+  try{
+    closeCinemaMode();
+    if(!document.fullscreenElement && !document.webkitFullscreenElement){
+      if(playerShell.requestFullscreen) await playerShell.requestFullscreen();
+      else if(playerShell.webkitRequestFullscreen) playerShell.webkitRequestFullscreen();
+      else if(frame?.src) window.open(frame.src,'_blank','noopener,noreferrer');
+    }else{
+      if(document.exitFullscreen) await document.exitFullscreen();
+      else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+  }catch(error){ console.error(error); if(frame?.src) window.open(frame.src,'_blank','noopener,noreferrer'); }
 }
-fullscreenBtn.addEventListener("click", toggleFullscreen);
+fullscreenBtn.addEventListener('click', toggleFullscreen);
+function updateFullscreenLabel(){ const active=Boolean(document.fullscreenElement||document.webkitFullscreenElement||playerShell.classList.contains('cinema-mode')); fullscreenBtn.querySelector('span').textContent=active?'✕ Sair da tela cheia':'⛶ Tela cheia'; }
+document.addEventListener('fullscreenchange',updateFullscreenLabel);document.addEventListener('webkitfullscreenchange',updateFullscreenLabel);
 
-function updateFullscreenLabel(){
-  const active = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-  fullscreenBtn.querySelector("span").textContent = active ? "✕ Sair da tela cheia" : "⛶ Tela cheia";
-}
-document.addEventListener("fullscreenchange", updateFullscreenLabel);
-document.addEventListener("webkitfullscreenchange", updateFullscreenLabel);
-
-const contentId = {{ content.id }};
-const updateUrl = `/progress/update/${contentId}`;
-let currentPct = {{ progress_pct|default(0) }};
-
-function paint(pct){
-  currentPct = Math.max(0, Math.min(100, pct));
-  document.getElementById("pctText").innerText = currentPct + "%";
-  document.getElementById("pctBar").style.width = currentPct + "%";
-}
-async function sendProgressPercent(pct){
-  await fetch(updateUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ position:pct, duration:100 })});
-}
-function setProgress(pct){ paint(pct); sendProgressPercent(pct); }
-paint(currentPct);
-
-// O player é externo e não expõe o tempo real por segurança do navegador.
-// Ainda assim, o Linkflix salva automaticamente uma estimativa enquanto a página fica aberta,
-// permitindo que o título apareça em "Continuar assistindo" sem apertar botões.
-let autoStartedAt = Date.now();
-let autoPct = Math.max(currentPct || 0, 1);
-let lastSavedPct = -1;
-async function saveAutomaticProgress(force=false){
-  const elapsedMinutes = (Date.now() - autoStartedAt) / 60000;
-  const estimated = Math.min(95, Math.max(autoPct, Math.floor(autoPct + elapsedMinutes * 2)));
-  if (!force && estimated === lastSavedPct) return;
-  lastSavedPct = estimated;
-  paint(estimated);
-  try { await sendProgressPercent(estimated); } catch(e) {}
-}
-setTimeout(() => saveAutomaticProgress(true), 8000);
-setInterval(() => saveAutomaticProgress(false), 30000);
-window.addEventListener('pagehide', () => {
-  const elapsedMinutes = (Date.now() - autoStartedAt) / 60000;
-  const estimated = Math.min(95, Math.max(autoPct, Math.floor(autoPct + elapsedMinutes * 2)));
-  navigator.sendBeacon(updateUrl, new Blob([JSON.stringify({position:estimated,duration:100})], {type:'application/json'}));
-});
+const contentId={{ content.id }}; const updateUrl=`/progress/update/${contentId}`; let currentPct={{ progress_pct|default(0) }};
+function paint(pct){currentPct=Math.max(0,Math.min(100,pct));document.getElementById('pctText').innerText=currentPct+'%';document.getElementById('pctBar').style.width=currentPct+'%';}
+async function sendProgressPercent(pct){await fetch(updateUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({position:pct,duration:100})});}
+function setProgress(pct){paint(pct);sendProgressPercent(pct);} paint(currentPct);
+let autoStartedAt=Date.now();let autoPct=Math.max(currentPct||0,1);let lastSavedPct=-1;
+async function saveAutomaticProgress(force=false){if(isIOS&&!playerStarted)return;const elapsedMinutes=(Date.now()-autoStartedAt)/60000;const estimated=Math.min(95,Math.max(autoPct,Math.floor(autoPct+elapsedMinutes*2)));if(!force&&estimated===lastSavedPct)return;lastSavedPct=estimated;paint(estimated);try{await sendProgressPercent(estimated);}catch(e){}}
+setTimeout(()=>saveAutomaticProgress(true),8000);setInterval(()=>saveAutomaticProgress(false),30000);
+window.addEventListener('pagehide',()=>{if(isIOS&&!playerStarted)return;const elapsedMinutes=(Date.now()-autoStartedAt)/60000;const estimated=Math.min(95,Math.max(autoPct,Math.floor(autoPct+elapsedMinutes*2)));navigator.sendBeacon(updateUrl,new Blob([JSON.stringify({position:estimated,duration:100})],{type:'application/json'}));});
 
 {% if is_series %}
-const TMDB_ID = "{{ content.tmdb_id }}";
-const seasonSelect = document.getElementById("seasonSelect");
-const episodeSelect = document.getElementById("episodeSelect");
-const frame = document.getElementById("seriesFrame");
-
-fetch(`/api/tmdb/tv/${TMDB_ID}/seasons`)
-.then(res => res.json())
-.then(data => {
-  const seasons = data.seasons || [];
-  seasons.forEach(s => {
-    const opt = document.createElement("option");
-    opt.value = s.season_number;
-    opt.textContent = s.name;
-    seasonSelect.appendChild(opt);
-  });
-  if (seasons.length) loadEpisodes(seasons[0].season_number);
-});
-
-function loadEpisodes(seasonNumber){
-  fetch(`/api/tmdb/tv/${TMDB_ID}/season/${seasonNumber}`)
-  .then(res => res.json())
-  .then(data => {
-    episodeSelect.innerHTML = "";
-    const eps = data.episodes || [];
-    eps.forEach(ep => {
-      const opt = document.createElement("option");
-      opt.value = ep.episode_number;
-      opt.textContent = ep.episode_number + " - " + ep.name;
-      episodeSelect.appendChild(opt);
-    });
-    if (eps.length) loadPlayer(seasonNumber, eps[0].episode_number);
-  });
-}
-function loadPlayer(season, episode){
-  playerLoading.classList.remove("hidden");
-  frame.src = `https://playerflixapi.com/serie/${TMDB_ID}/${season}/${episode}`;
-}
-seasonSelect.addEventListener("change", ()=> loadEpisodes(seasonSelect.value));
-episodeSelect.addEventListener("change", ()=> loadPlayer(seasonSelect.value, episodeSelect.value));
+const TMDB_ID='{{ content.tmdb_id }}'; const seasonSelect=document.getElementById('seasonSelect'); const episodeSelect=document.getElementById('episodeSelect'); const frame=document.getElementById('seriesFrame');
+fetch(`/api/tmdb/tv/${TMDB_ID}/seasons`).then(res=>res.json()).then(data=>{const seasons=data.seasons||[];seasons.forEach(s=>{const opt=document.createElement('option');opt.value=s.season_number;opt.textContent=s.name;seasonSelect.appendChild(opt);});if(seasons.length)loadEpisodes(seasons[0].season_number);});
+function loadEpisodes(seasonNumber){fetch(`/api/tmdb/tv/${TMDB_ID}/season/${seasonNumber}`).then(res=>res.json()).then(data=>{episodeSelect.innerHTML='';const eps=data.episodes||[];eps.forEach(ep=>{const opt=document.createElement('option');opt.value=ep.episode_number;opt.textContent=ep.episode_number+' - '+ep.name;episodeSelect.appendChild(opt);});if(eps.length){currentPlayerUrl=`https://playerflixapi.com/serie/${TMDB_ID}/${seasonNumber}/${eps[0].episode_number}`;if(isIOS){iosStartBtn.textContent='▶ Iniciar episódio';}else{loadPlayer(seasonNumber,eps[0].episode_number);}}});}
+function loadPlayer(season,episode){const url=`https://playerflixapi.com/serie/${TMDB_ID}/${season}/${episode}`;currentPlayerUrl=url;if(isIOS){playerStarted=false;frame.src='about:blank';iosFallback.classList.remove('show');iosStart.classList.add('show');iosStartBtn.textContent='▶ Iniciar episódio';playerLoading.classList.add('hidden');return;}setFrameUrl(url,false);}
+seasonSelect.addEventListener('change',()=>loadEpisodes(seasonSelect.value));episodeSelect.addEventListener('change',()=>loadPlayer(seasonSelect.value,episodeSelect.value));
 {% endif %}
 </script>
 </body>
