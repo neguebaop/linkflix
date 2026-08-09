@@ -25,7 +25,10 @@
   .ios-start-card{max-width:430px;color:#fff}
   .ios-start-icon{width:70px;height:70px;border-radius:50%;margin:0 auto 16px;background:#e50914;display:grid;place-items:center;font-size:31px;padding-left:4px;box-shadow:0 12px 35px rgba(229,9,20,.28)}
   .ios-start-title{font-size:20px;font-weight:900;margin-bottom:7px}.ios-start-text{font-size:13px;line-height:1.45;color:#bcbcbc;margin-bottom:16px}
-  .ios-start-btn,.ios-fallback-btn{border:0;border-radius:8px;background:#e50914;color:#fff;font-weight:900;padding:11px 18px;cursor:pointer;font-size:14px}
+  .ios-start-btn,.ios-fallback-btn{border:0;border-radius:8px;background:#e50914;color:#fff;font-weight:900;padding:11px 18px;cursor:pointer;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+  .ios-start-btn:active,.ios-fallback-btn:active{transform:scale(.98)}
+  .ios-alt-btn{margin-left:8px;background:#262626;border:1px solid rgba(255,255,255,.16)}
+  @media(max-width:700px){body.ios-device .watch-player-toolbar{display:none}.ios-start-card{max-width:330px}.ios-start-btn{width:100%;padding:13px 16px}.ios-alt-btn{margin:9px 0 0}.ios-start-text{font-size:12px}}
   .ios-fallback{display:none;position:absolute;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:9;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:10px;background:rgba(0,0,0,.82);color:#ddd;font-size:12px;border:1px solid rgba(255,255,255,.12)}
   .ios-fallback.show{display:flex}.ios-fallback-btn{padding:8px 11px;font-size:12px;white-space:nowrap}
   .ios-note{display:none;margin:10px 0 0;color:#9b9b9b;font-size:12px;line-height:1.4}.ios-note.show{display:block}
@@ -58,14 +61,15 @@
       <div class="ios-start" id="iosStart">
         <div class="ios-start-card">
           <div class="ios-start-icon">▶</div>
-          <div class="ios-start-title">Reproduzir no iPhone</div>
-          <div class="ios-start-text">O iOS precisa que o player seja iniciado por um toque. Isso evita a tela preta do Safari/WebView.</div>
-          <button type="button" class="ios-start-btn" id="iosStartBtn">▶ Iniciar filme</button>
+          <div class="ios-start-title">Abrir filme no Safari</div>
+          <div class="ios-start-text">No iPhone, o player será aberto diretamente no navegador para evitar a tela preta do player incorporado.</div>
+          <a class="ios-start-btn" id="iosStartBtn" href="#" target="_blank" rel="noopener noreferrer external">▶ Abrir no Safari</a>
+          <button type="button" class="ios-start-btn ios-alt-btn" id="iosTryHereBtn">Tentar aqui</button>
         </div>
       </div>
       <div class="ios-fallback" id="iosFallback">
-        <span>Se o vídeo continuar preto no iPhone:</span>
-        <button type="button" class="ios-fallback-btn" id="iosDirectBtn">Abrir player compatível</button>
+        <span>Se o vídeo não abriu:</span>
+        <a class="ios-fallback-btn" id="iosDirectBtn" href="#" target="_blank" rel="noopener noreferrer external">Abrir novamente no Safari</a>
       </div>
       {% if not is_series %}
         <iframe id="contentFrame"
@@ -90,7 +94,7 @@
         </iframe>
       {% endif %}
     </div>
-    <div class="ios-note" id="iosNote">No iPhone/iPad, o Linkflix inicia o player somente depois do seu toque para respeitar as regras de reprodução do iOS.</div>
+    <div class="ios-note" id="iosNote">No iPhone/iPad, o Linkflix abre o player diretamente no Safari para melhorar a compatibilidade com vídeo.</div>
 
     {% if is_series %}
       <div style="margin-top:15px;display:flex;gap:10px;flex-wrap:wrap;">
@@ -122,6 +126,7 @@ const iosStart = document.getElementById('iosStart');
 const iosStartBtn = document.getElementById('iosStartBtn');
 const iosFallback = document.getElementById('iosFallback');
 const iosDirectBtn = document.getElementById('iosDirectBtn');
+const iosTryHereBtn = document.getElementById('iosTryHereBtn');
 const iosNote = document.getElementById('iosNote');
 
 const ua = navigator.userAgent || '';
@@ -148,34 +153,49 @@ function setFrameUrl(url, fromUserGesture=false){
   if(!isIOS && fromUserGesture===false){ setTimeout(openCinemaMode, 2200); }
 }
 
-function directOpenForIOS(){
-  const url = currentPlayerUrl || initialFrame?.dataset?.src;
+function updateIOSDirectLinks(url){
   if(!url) return;
-  // Em iOS/WebView, navegar a aba atual é mais confiável que window.open e mantém o gesto do usuário.
-  window.location.assign(url);
+  currentPlayerUrl = url;
+  if(iosStartBtn) iosStartBtn.href = url;
+  if(iosDirectBtn) iosDirectBtn.href = url;
 }
-iosDirectBtn.addEventListener('click', directOpenForIOS);
+
+function tryEmbeddedOnIOS(){
+  const url = currentPlayerUrl || initialFrame?.dataset?.src;
+  if(!url || !initialFrame) return;
+  playerStarted = true;
+  playerLoading.classList.remove('hidden');
+  iosStart.classList.remove('show');
+  initialFrame.src = url;
+  clearTimeout(fallbackTimer);
+  fallbackTimer = setTimeout(()=>iosFallback.classList.add('show'), 6500);
+}
+if(iosTryHereBtn) iosTryHereBtn.addEventListener('click', tryEmbeddedOnIOS);
 
 window.addEventListener('DOMContentLoaded', ()=>{
   if(isIOS){
+    document.body.classList.add('ios-device');
     iosNote.classList.add('show');
     iosStart.classList.add('show');
     playerLoading.classList.add('hidden');
-    if(!{{ 'true' if is_series else 'false' }}) currentPlayerUrl = initialFrame.dataset.src;
+    if(!{{ 'true' if is_series else 'false' }}) updateIOSDirectLinks(initialFrame.dataset.src);
   } else if(initialFrame && initialFrame.dataset.src){
     setFrameUrl(initialFrame.dataset.src, false);
   }
 });
 
-iosStartBtn.addEventListener('click', ()=>{
-  {% if is_series %}
-  const s = document.getElementById('seasonSelect')?.value;
-  const e = document.getElementById('episodeSelect')?.value;
-  if(s && e) setFrameUrl(`https://playerflixapi.com/serie/{{ content.tmdb_id }}/${s}/${e}`, true);
-  else { iosStartBtn.textContent='Carregando episódios...'; }
-  {% else %}
-  setFrameUrl(initialFrame.dataset.src, true);
-  {% endif %}
+iosStartBtn.addEventListener('click', (event)=>{
+  if(!isIOS) return;
+  const url = currentPlayerUrl || initialFrame?.dataset?.src;
+  if(!url || url === '#'){
+    event.preventDefault();
+    iosStartBtn.textContent = 'Carregando episódios...';
+    return;
+  }
+  // O clique real no link externo é preservado. Em Safari abre uma nova aba; em wrappers/PWA
+  // o domínio externo tem a melhor chance de sair do WebView e usar o navegador do sistema.
+  playerStarted = true;
+  saveAutomaticProgress(true);
 });
 
 if(initialFrame){
@@ -224,8 +244,8 @@ window.addEventListener('pagehide',()=>{if(isIOS&&!playerStarted)return;const el
 {% if is_series %}
 const TMDB_ID='{{ content.tmdb_id }}'; const seasonSelect=document.getElementById('seasonSelect'); const episodeSelect=document.getElementById('episodeSelect'); const frame=document.getElementById('seriesFrame');
 fetch(`/api/tmdb/tv/${TMDB_ID}/seasons`).then(res=>res.json()).then(data=>{const seasons=data.seasons||[];seasons.forEach(s=>{const opt=document.createElement('option');opt.value=s.season_number;opt.textContent=s.name;seasonSelect.appendChild(opt);});if(seasons.length)loadEpisodes(seasons[0].season_number);});
-function loadEpisodes(seasonNumber){fetch(`/api/tmdb/tv/${TMDB_ID}/season/${seasonNumber}`).then(res=>res.json()).then(data=>{episodeSelect.innerHTML='';const eps=data.episodes||[];eps.forEach(ep=>{const opt=document.createElement('option');opt.value=ep.episode_number;opt.textContent=ep.episode_number+' - '+ep.name;episodeSelect.appendChild(opt);});if(eps.length){currentPlayerUrl=`https://playerflixapi.com/serie/${TMDB_ID}/${seasonNumber}/${eps[0].episode_number}`;if(isIOS){iosStartBtn.textContent='▶ Iniciar episódio';}else{loadPlayer(seasonNumber,eps[0].episode_number);}}});}
-function loadPlayer(season,episode){const url=`https://playerflixapi.com/serie/${TMDB_ID}/${season}/${episode}`;currentPlayerUrl=url;if(isIOS){playerStarted=false;frame.src='about:blank';iosFallback.classList.remove('show');iosStart.classList.add('show');iosStartBtn.textContent='▶ Iniciar episódio';playerLoading.classList.add('hidden');return;}setFrameUrl(url,false);}
+function loadEpisodes(seasonNumber){fetch(`/api/tmdb/tv/${TMDB_ID}/season/${seasonNumber}`).then(res=>res.json()).then(data=>{episodeSelect.innerHTML='';const eps=data.episodes||[];eps.forEach(ep=>{const opt=document.createElement('option');opt.value=ep.episode_number;opt.textContent=ep.episode_number+' - '+ep.name;episodeSelect.appendChild(opt);});if(eps.length){currentPlayerUrl=`https://playerflixapi.com/serie/${TMDB_ID}/${seasonNumber}/${eps[0].episode_number}`;if(isIOS){updateIOSDirectLinks(currentPlayerUrl);iosStartBtn.textContent='▶ Abrir episódio no Safari';}else{loadPlayer(seasonNumber,eps[0].episode_number);}}});}
+function loadPlayer(season,episode){const url=`https://playerflixapi.com/serie/${TMDB_ID}/${season}/${episode}`;currentPlayerUrl=url;if(isIOS){playerStarted=false;frame.src='about:blank';iosFallback.classList.remove('show');iosStart.classList.add('show');updateIOSDirectLinks(url);iosStartBtn.textContent='▶ Abrir episódio no Safari';playerLoading.classList.add('hidden');return;}setFrameUrl(url,false);}
 seasonSelect.addEventListener('change',()=>loadEpisodes(seasonSelect.value));episodeSelect.addEventListener('change',()=>loadPlayer(seasonSelect.value,episodeSelect.value));
 {% endif %}
 </script>
