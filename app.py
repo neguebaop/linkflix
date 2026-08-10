@@ -497,6 +497,22 @@ class WatchProgress(db.Model):
     __table_args__ = (db.UniqueConstraint("profile_id", "content_id", name="unique_progress"),)
 
 
+class ActiveWatch(db.Model):
+    """Presença leve para o painel Admin > Monitoramento.
+
+    Não armazena IP. Mantém somente usuário/perfil, conteúdo, dispositivo
+    resumido e o último sinal recebido enquanto a página /watch está aberta.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    profile_id = db.Column(db.Integer, db.ForeignKey("profile.id"), nullable=True, index=True)
+    content_id = db.Column(db.Integer, db.ForeignKey("content.id"), nullable=True, index=True)
+    device = db.Column(db.String(120), default="Dispositivo desconhecido")
+    last_seen = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    __table_args__ = (db.UniqueConstraint("user_id", "profile_id", name="unique_active_watch_user_profile"),)
+
+
 class PlanPurchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
@@ -1787,6 +1803,23 @@ def tmdb_tv_season_episodes(tv_id, season_number):
         return jsonify({"ok": False, "error": str(e)}), 400
 
 
+def _friendly_device(user_agent: str) -> str:
+    ua = (user_agent or "").lower()
+    if "iphone" in ua:
+        return "iPhone / iOS"
+    if "ipad" in ua:
+        return "iPad / iPadOS"
+    if "android" in ua:
+        return "Celular/Tablet Android"
+    if "windows" in ua:
+        return "PC Windows"
+    if "macintosh" in ua or "mac os" in ua:
+        return "Mac"
+    if "linux" in ua:
+        return "PC Linux"
+    return "Navegador / outro dispositivo"
+
+
 # =========================================================
 # ============================ WATCH ========================
 # =========================================================
@@ -1823,6 +1856,28 @@ def watch(id):
         is_series=is_series,
         tmdb_api_ok=bool(TMDB_API_KEY)
     )
+
+
+@app.route("/api/watch/presence/<int:content_id>", methods=["POST"] )
+@login_required
+@require_active_profile
+def watch_presence(content_id):
+    """Atualiza o status de quem está realmente com uma página de reprodução aberta."""
+    content = Content.query.get(content_id)
+    if not content:
+        return jsonify({"ok": False}), 404
+
+    profile_id = session.get("active_profile")
+    now = datetime.utcnow()
+    row = ActiveWatch.query.filter_by(user_id=current_user.id, profile_id=profile_id).first()
+    if not row:
+        row = ActiveWatch(user_id=current_user.id, profile_id=profile_id)
+        db.session.add(row)
+    row.content_id = content_id
+    row.device = _friendly_device(request.headers.get("User-Agent", ""))
+    row.last_seen = now
+    db.session.commit()
+    return jsonify({"ok": True})
 
 
 # =========================================================
@@ -2209,12 +2264,48 @@ def admin_manual_plan():
             db.session.commit()
             flash(f"✅ Gold ativado permanente para {user.username}", "success")
 
+        elif action == "remove":
+            user.plan = PLAN_FREE
+            user.plan_expires_at = None
+            db.session.commit()
+            flash(f"✅ Premium/Gold removido de {user.username}. A conta voltou para Free.", "success")
+
         else:
             flash("Ação inválida.", "danger")
 
         return redirect(url_for("admin_manual_plan"))
 
-    return render_template("admin_manual_plan.html")
+    premium_users = (User.query
+        .filter(User.plan.in_([PLAN_PREMIUM, PLAN_GOLD]))
+        .order_by(User.username.asc())
+        .all())
+    return render_template("admin_manual_plan.html", premium_users=premium_users)
+
+
+@app.route("/admin/monitoramento")
+@login_required
+@admin_required
+def admin_monitoring():
+    cutoff = datetime.utcnow() - timedelta(seconds=95)
+    rows = (db.session.query(ActiveWatch, User, Profile, Content)
+        .join(User, ActiveWatch.user_id == User.id)
+        .outerjoin(Profile, ActiveWatch.profile_id == Profile.id)
+        .outerjoin(Content, ActiveWatch.content_id == Content.id)
+        .filter(ActiveWatch.last_seen >= cutoff)
+        .order_by(ActiveWatch.last_seen.desc())
+        .all())
+
+    viewers = []
+    for presence, user, profile, content in rows:
+        viewers.append({
+            "email": user.username,
+            "profile": profile.name if profile else "Sem perfil",
+            "device": presence.device or "Dispositivo desconhecido",
+            "content": content.title if content else "Conteúdo indisponível",
+            "last_seen": presence.last_seen,
+        })
+
+    return render_template("admin_monitoring.html", viewers=viewers, now=datetime.utcnow())
 
 
 # =========================================================

@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container-nx" style="max-width:1100px;">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+    <div>
+      <div class="nx-title">Monitoramento</div>
+      <div class="nx-subtitle">Pessoas assistindo agora no Linkflix. O status some sozinho após cerca de 1 minuto e meio sem atividade.</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="nx-btn nx-btn-primary" onclick="location.reload()">↻ Atualizar</button>
+      <a class="nx-btn nx-btn-ghost" href="{{ url_for('admin') }}">← Admin</a>
+    </div>
+  </div>
+
+  <div class="nx-card" style="margin-top:18px;">
+    <div class="nx-card-inner">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;">
+        <div>
+          <div style="font-size:18px;font-weight:900;">Assistindo agora</div>
+          <div class="nx-help">Email, perfil, dispositivo e título em reprodução.</div>
+        </div>
+        <div class="nx-pill brand">{{ viewers|length }} online</div>
+      </div>
+
+      {% if viewers %}
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
+          {% for v in viewers %}
+          <div style="padding:16px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;">
+              <span style="width:9px;height:9px;border-radius:999px;background:#23d18b;box-shadow:0 0 14px rgba(35,209,139,.55);"></span>
+              <strong style="font-size:14px;overflow-wrap:anywhere;">{{ v.email }}</strong>
+            </div>
+            <div style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.82);">
+              <div><b>Perfil:</b> {{ v.profile }}</div>
+              <div><b>Assistindo:</b> {{ v.content }}</div>
+              <div><b>Dispositivo:</b> {{ v.device }}</div>
+              <div class="nx-help" style="margin-top:5px;">Último sinal: {{ v.last_seen.strftime('%H:%M:%S') }} UTC</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="padding:42px 18px;text-align:center;border:1px dashed rgba(255,255,255,.10);border-radius:14px;">
+          <div style="font-size:36px;margin-bottom:8px;">◉</div>
+          <div style="font-weight:850;font-size:17px;">Ninguém assistindo agora</div>
+          <div class="nx-help" style="margin-top:4px;">Quando alguém abrir um filme ou série, aparece aqui automaticamente.</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<script>
+  setTimeout(() => location.reload(), 30000);
+</script>
+{% endblock %}

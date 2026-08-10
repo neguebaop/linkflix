@@ -189,7 +189,14 @@ document.addEventListener("fullscreenchange", updateFullscreenLabel);
 document.addEventListener("webkitfullscreenchange", updateFullscreenLabel);
 
 const contentId = {{ content.id }};
+const presenceUrl = `/api/watch/presence/${contentId}`;
 const updateUrl = `/progress/update/${contentId}`;
+
+async function sendPresence(){
+  try { await fetch(presenceUrl, {method:"POST", credentials:"same-origin", keepalive:true}); } catch(e) {}
+}
+sendPresence();
+setInterval(sendPresence, 30000);
 let currentPct = {{ progress_pct|default(0) }};
 
 function paint(pct){
