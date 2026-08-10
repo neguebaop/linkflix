@@ -1,4 +1,4 @@
-const CACHE_NAME = "linkflix-v30";
+const CACHE_NAME = "linkflix-v39-admin-monitoring";
 const STATIC_ASSETS = [
   "/static/css/style.css",
   "/static/images/linkflix_logo.png",

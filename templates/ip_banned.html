@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Acesso bloqueado · Linkflix</title>
+  <style>
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090909;color:#fff;font-family:Arial,sans-serif;padding:24px}
+    .box{width:min(520px,100%);background:#131313;border:1px solid #3a1719;border-radius:18px;padding:32px;text-align:center;box-shadow:0 22px 80px #000}
+    .logo{font-weight:1000;font-size:31px;color:#e50914;letter-spacing:-1px}.ico{font-size:38px;margin:18px 0 8px}.muted{color:#aaa;line-height:1.55}.ip{margin-top:18px;font:13px monospace;color:#777}
+  </style>
+</head>
+<body><div class="box"><div class="logo">LINKFLIX</div><div class="ico">⛔</div><h2>Acesso bloqueado</h2><p class="muted">Este endereço de rede foi bloqueado pelo administrador do Linkflix.</p><p class="muted">{{ reason }}</p><div class="ip">IP: {{ ip }}</div></div></body>
+</html>

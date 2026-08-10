@@ -1,10 +1,10 @@
 {% extends "layout.html" %}
 {% block content %}
-<div class="container-nx" style="max-width:1100px;">
+<div class="container-nx" style="max-width:1180px;">
   <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;">
     <div>
       <div class="nx-title">Monitoramento</div>
-      <div class="nx-subtitle">Pessoas assistindo agora no Linkflix. O status some sozinho após cerca de 1 minuto e meio sem atividade.</div>
+      <div class="nx-subtitle">Pessoas assistindo agora no Linkflix. O status some após cerca de 1 minuto e meio sem atividade.</div>
     </div>
     <div style="display:flex;gap:10px;">
       <button class="nx-btn nx-btn-primary" onclick="location.reload()">↻ Atualizar</button>
@@ -17,25 +17,41 @@
       <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;">
         <div>
           <div style="font-size:18px;font-weight:900;">Assistindo agora</div>
-          <div class="nx-help">Email, perfil, dispositivo e título em reprodução.</div>
+          <div class="nx-help">Email, perfil, dispositivo, IP e título em reprodução.</div>
         </div>
         <div class="nx-pill brand">{{ viewers|length }} online</div>
       </div>
 
       {% if viewers %}
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px;">
           {% for v in viewers %}
-          <div style="padding:16px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);">
+          <div style="padding:16px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid {% if v.is_banned %}rgba(229,9,20,.48){% else %}rgba(255,255,255,.08){% endif %};">
             <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;">
-              <span style="width:9px;height:9px;border-radius:999px;background:#23d18b;box-shadow:0 0 14px rgba(35,209,139,.55);"></span>
+              <span style="width:9px;height:9px;border-radius:999px;background:{% if v.is_banned %}#e50914{% else %}#23d18b{% endif %};box-shadow:0 0 14px rgba(35,209,139,.45);"></span>
               <strong style="font-size:14px;overflow-wrap:anywhere;">{{ v.email }}</strong>
+              {% if v.is_banned %}<span class="nx-pill brand" style="margin-left:auto;">IP banido</span>{% endif %}
             </div>
-            <div style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.82);">
+            <div style="font-size:13px;line-height:1.75;color:rgba(255,255,255,.82);">
               <div><b>Perfil:</b> {{ v.profile }}</div>
               <div><b>Assistindo:</b> {{ v.content }}</div>
               <div><b>Dispositivo:</b> {{ v.device }}</div>
+              <div><b>IP:</b> <code style="color:#fff;background:rgba(255,255,255,.07);padding:3px 7px;border-radius:6px;">{{ v.ip }}</code></div>
               <div class="nx-help" style="margin-top:5px;">Último sinal: {{ v.last_seen.strftime('%H:%M:%S') }} UTC</div>
             </div>
+            {% if v.ip != 'Não identificado' %}
+              {% if v.is_banned %}
+              <form method="post" action="{{ url_for('admin_unban_ip') }}" style="margin-top:13px;">
+                <input type="hidden" name="ip" value="{{ v.ip }}">
+                <button class="nx-btn nx-btn-ghost" type="submit" style="width:100%;">✓ Liberar IP</button>
+              </form>
+              {% else %}
+              <form method="post" action="{{ url_for('admin_ban_ip') }}" style="margin-top:13px;" onsubmit="return confirm('Banir o IP {{ v.ip }}? Esse endereço não poderá mais acessar o Linkflix.');">
+                <input type="hidden" name="ip" value="{{ v.ip }}">
+                <input type="hidden" name="reason" value="Bloqueado pelo administrador no Monitoramento">
+                <button class="nx-btn nx-btn-primary" type="submit" style="width:100%;background:#8f1017;">⛔ Banir IP</button>
+              </form>
+              {% endif %}
+            {% endif %}
           </div>
           {% endfor %}
         </div>
@@ -45,6 +61,37 @@
           <div style="font-weight:850;font-size:17px;">Ninguém assistindo agora</div>
           <div class="nx-help" style="margin-top:4px;">Quando alguém abrir um filme ou série, aparece aqui automaticamente.</div>
         </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="nx-card" style="margin-top:18px;">
+    <div class="nx-card-inner">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;">
+        <div>
+          <div style="font-size:18px;font-weight:900;">IPs bloqueados</div>
+          <div class="nx-help">Bloqueios persistentes no banco. Você pode liberar qualquer IP daqui.</div>
+        </div>
+        <div class="nx-pill brand">{{ banned_ips|length }} banidos</div>
+      </div>
+
+      {% if banned_ips %}
+      <div style="display:grid;gap:10px;">
+        {% for b in banned_ips %}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(229,9,20,.25);">
+          <div>
+            <div style="font-weight:850;"><code style="color:#fff;">{{ b.ip_address }}</code></div>
+            <div class="nx-help" style="margin-top:3px;">{{ b.reason }} · {{ b.created_at.strftime('%d/%m/%Y %H:%M') }} UTC</div>
+          </div>
+          <form method="post" action="{{ url_for('admin_unban_ip') }}">
+            <input type="hidden" name="ip" value="{{ b.ip_address }}">
+            <button class="nx-btn nx-btn-ghost" type="submit">Liberar</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="nx-help">Nenhum IP está bloqueado.</div>
       {% endif %}
     </div>
   </div>

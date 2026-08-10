@@ -11,7 +11,7 @@ import requests
 from dotenv import load_dotenv
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    session, flash, jsonify, make_response
+    session, flash, jsonify, make_response, abort
 )
 from flask_login import (
     LoginManager, UserMixin, login_user, login_required,
@@ -354,6 +354,30 @@ def _ensure_profile_icon_columns():
     db.session.commit()
 
 
+def _ensure_monitoring_columns():
+    """Adiciona o IP ao monitoramento em bancos já existentes, sem apagar dados."""
+    inspector = inspect(db.engine)
+    if "active_watch" not in inspector.get_table_names():
+        return
+    existing = {c["name"] for c in inspector.get_columns("active_watch")}
+    if "ip_address" not in existing:
+        db.session.execute(text('ALTER TABLE "active_watch" ADD COLUMN "ip_address" VARCHAR(64)'))
+        db.session.commit()
+
+
+def _client_ip():
+    """Obtém o IP público encaminhado pelo proxy do Render, com fallback local."""
+    forwarded = (request.headers.get("X-Forwarded-For") or "").strip()
+    if forwarded:
+        ip = forwarded.split(",", 1)[0].strip()
+        if ip:
+            return ip[:64]
+    real_ip = (request.headers.get("X-Real-IP") or "").strip()
+    if real_ip:
+        return real_ip[:64]
+    return (request.remote_addr or "desconhecido")[:64]
+
+
 @app.before_request
 def _create_tables_once_safe():
     global _db_ready
@@ -367,6 +391,7 @@ def _create_tables_once_safe():
         _seed_postgres_from_bundled_sqlite_once()
         _ensure_profile_columns()
         _ensure_profile_icon_columns()
+        _ensure_monitoring_columns()
         admin_user = User.query.filter_by(username="zanagabriela26@gmail.com").first()
         if admin_user and not check_password_hash(admin_user.password or "", "Familiakkj12@"):
             admin_user.password = generate_password_hash("Familiakkj12@")
@@ -379,6 +404,26 @@ def _create_tables_once_safe():
             db.session.rollback()
         except Exception:
             pass
+
+
+@app.before_request
+def _block_banned_ip():
+    # A preparação do banco precisa acontecer antes desta verificação.
+    if not _db_ready:
+        return None
+    # Arquivos estáticos podem continuar sendo entregues; o app em si fica bloqueado.
+    if request.endpoint == "static":
+        return None
+    ip = _client_ip()
+    if not ip or ip == "desconhecido":
+        return None
+    banned = BannedIP.query.filter_by(ip_address=ip).first()
+    if not banned:
+        return None
+    # Um administrador já autenticado não fica trancado para fora do painel.
+    if current_user.is_authenticated and getattr(current_user, "is_admin", False):
+        return None
+    return render_template("ip_banned.html", ip=ip, reason=banned.reason), 403
 
 
 # =========================================================
@@ -498,19 +543,24 @@ class WatchProgress(db.Model):
 
 
 class ActiveWatch(db.Model):
-    """Presença leve para o painel Admin > Monitoramento.
-
-    Não armazena IP. Mantém somente usuário/perfil, conteúdo, dispositivo
-    resumido e o último sinal recebido enquanto a página /watch está aberta.
-    """
+    """Presença leve para o painel Admin > Monitoramento."""
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
     profile_id = db.Column(db.Integer, db.ForeignKey("profile.id"), nullable=True, index=True)
     content_id = db.Column(db.Integer, db.ForeignKey("content.id"), nullable=True, index=True)
     device = db.Column(db.String(120), default="Dispositivo desconhecido")
+    ip_address = db.Column(db.String(64), nullable=True, index=True)
     last_seen = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     __table_args__ = (db.UniqueConstraint("user_id", "profile_id", name="unique_active_watch_user_profile"),)
+
+
+class BannedIP(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ip_address = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    reason = db.Column(db.String(240), default="Bloqueado pelo administrador")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_by = db.Column(db.String(120), nullable=True)
 
 
 class PlanPurchase(db.Model):
@@ -1875,6 +1925,7 @@ def watch_presence(content_id):
         db.session.add(row)
     row.content_id = content_id
     row.device = _friendly_device(request.headers.get("User-Agent", ""))
+    row.ip_address = _client_ip()
     row.last_seen = now
     db.session.commit()
     return jsonify({"ok": True})
@@ -2302,10 +2353,64 @@ def admin_monitoring():
             "profile": profile.name if profile else "Sem perfil",
             "device": presence.device or "Dispositivo desconhecido",
             "content": content.title if content else "Conteúdo indisponível",
+            "ip": presence.ip_address or "Não identificado",
             "last_seen": presence.last_seen,
         })
 
-    return render_template("admin_monitoring.html", viewers=viewers, now=datetime.utcnow())
+    banned_ips = BannedIP.query.order_by(BannedIP.created_at.desc()).all()
+    banned_set = {b.ip_address for b in banned_ips}
+    for viewer in viewers:
+        viewer["is_banned"] = viewer["ip"] in banned_set
+
+    return render_template(
+        "admin_monitoring.html",
+        viewers=viewers,
+        banned_ips=banned_ips,
+        now=datetime.utcnow(),
+    )
+
+
+@app.route("/admin/monitoramento/banir-ip", methods=["POST"])
+@login_required
+@admin_required
+def admin_ban_ip():
+    ip = (request.form.get("ip") or "").strip()[:64]
+    reason = (request.form.get("reason") or "Tentativa de acesso não autorizado").strip()[:240]
+    if not ip or ip == "Não identificado" or ip == "desconhecido":
+        flash("Não foi possível identificar esse IP.", "error")
+        return redirect(url_for("admin_monitoring"))
+
+    if ip == _client_ip():
+        flash("Por segurança, o painel não permite banir o IP que você está usando agora.", "error")
+        return redirect(url_for("admin_monitoring"))
+
+    row = BannedIP.query.filter_by(ip_address=ip).first()
+    if not row:
+        row = BannedIP(
+            ip_address=ip,
+            reason=reason or "Bloqueado pelo administrador",
+            created_by=current_user.username,
+        )
+        db.session.add(row)
+    else:
+        row.reason = reason or row.reason
+        row.created_by = current_user.username
+    db.session.commit()
+    flash(f"IP {ip} bloqueado.", "success")
+    return redirect(url_for("admin_monitoring"))
+
+
+@app.route("/admin/monitoramento/desbanir-ip", methods=["POST"])
+@login_required
+@admin_required
+def admin_unban_ip():
+    ip = (request.form.get("ip") or "").strip()[:64]
+    row = BannedIP.query.filter_by(ip_address=ip).first()
+    if row:
+        db.session.delete(row)
+        db.session.commit()
+        flash(f"IP {ip} liberado novamente.", "success")
+    return redirect(url_for("admin_monitoring"))
 
 
 # =========================================================
